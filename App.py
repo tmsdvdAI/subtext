@@ -559,16 +559,16 @@ Règles :
                 st.write("")
 
                         # Si des claims existent, proposer une vérification web via ChatGPT
+          # Si des claims existent, proposer une vérification web via ChatGPT
         if claims:
             st.write("---")
             st.markdown("### 🔍 Vérifier ces affirmations sur Internet")
 
-            factcheck_prompt = f"""
+            # Prompt court, sans coller tout le texte dans l’URL
+            factcheck_instructions = """
 Tu es un assistant spécialisé en vérification factuelle avec accès à la recherche web (browsing).
 
-Ta tâche est de vérifier les affirmations factuelles contenues dans le texte ci-dessous en utilisant des sources fiables disponibles en ligne.
-
-INSTRUCTIONS :
+Quand je te collerai un texte :
 1. Identifie les principales affirmations factuelles.
 2. Pour chaque affirmation, fais une recherche web rapide.
 3. Pour chaque affirmation, retourne :
@@ -577,19 +577,11 @@ INSTRUCTIONS :
    - Sources : 2 à 3 URL de sources fiables
    - Confiance : un score de 0 à 100
 
-FORMAT DE SORTIE :
-
-### Fact-check web sourcé
-
-| Claim | Verdict | Sources | Confiance |
-|------|---------|---------|-----------|
-
-### Texte à vérifier :
-
-{source_text}
+Réponds dans un tableau Markdown.
+Ne commente pas le texte au-delà de la vérification factuelle.
 """
 
-            query = urllib.parse.quote(factcheck_prompt)
+            query = urllib.parse.quote(factcheck_instructions)
             chatgpt_url = f"https://chat.openai.com/?q={query}"
 
             st.markdown(
@@ -597,7 +589,7 @@ FORMAT DE SORTIE :
                 unsafe_allow_html=True,
             )
             st.caption(
-                "Clique pour ouvrir ChatGPT avec le texte déjà préparé pour un fact-check web sourcé."
+                "Après ouverture, colle simplement le texte à vérifier dans ChatGPT pour lancer le fact-check web sourcé."
             )
 
 
