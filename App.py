@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
+import urllib.parse
+
 
 
 # ───────────────── CONFIG & CLIENT ─────────────────
@@ -287,7 +289,9 @@ if input_mode == "Texte":
         "Colle ton texte ici :",
         height=220,
         placeholder="Ex : mail, message, post, discours...",
+        key="input_text",  # <- clé pour pouvoir la vider
     )
+
 else:
     st.info(
         "🔗 Analyse par URL arrive bientôt.\n\n"
@@ -298,7 +302,21 @@ else:
     st.stop()
 
 
-analyze_button = st.button("Analyser ce texte")
+col_analyze, col_clear = st.columns([3, 1])
+
+with col_analyze:
+    analyze_button = st.button("Analyser ce texte")
+
+with col_clear:
+    clear_button = st.button("Effacer")
+
+# Si on clique sur "Effacer", on vide le texte + l'analyse
+if "clear_button" in locals() and clear_button:
+    st.session_state["input_text"] = ""
+    st.session_state["analysis_data"] = None
+    st.session_state["source_text"] = ""
+    st.session_state["word_count"] = 0
+
 
 
 
@@ -326,7 +344,7 @@ if analyze_button:
     with st.spinner("Analyse en cours..."):
         try:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-5.1",
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
@@ -424,7 +442,7 @@ if data:
 
     st.write("---")
 
-    # ───────── PROPOSITION DE RÉPONSE (juste après la vue d’ensemble) ─────────
+        # ───────── PROPOSITION DE RÉPONSE (juste après la vue d’ensemble) ─────────
     st.subheader("💬 Générer une réponse à ce message ?")
 
     reply_button = st.button("Proposer une réponse", key="reply_after_analysis")
@@ -455,7 +473,7 @@ Règles :
                     )
 
                     reply_resp = client.chat.completions.create(
-                        model="gpt-4.1-mini",
+                        model="gpt-5.1",
                         messages=[
                             {"role": "system", "content": reply_system_prompt},
                             {"role": "user", "content": reply_user_content},
@@ -472,9 +490,11 @@ Règles :
                     st.error(f"Erreur lors de la génération de la réponse : {e}")
         else:
             st.info(
-                "Ce contenu n'a pas été identifié comme conversationnel "
-                "(mail / DM / forum). La génération de réponse est désactivée pour ce type."
+                "Ce contenu n’a pas été identifié comme conversationnel "
+                "(mail / DM / forum). Réponse automatique désactivée."
             )
+
+
 
     # ───────── SCORES DÉTAILLÉS ─────────
     st.subheader("Scores cognitifs")
@@ -537,6 +557,49 @@ Règles :
                     for s in sources:
                         st.markdown(f"  - {s}")
                 st.write("")
+
+                        # Si des claims existent, proposer une vérification web via ChatGPT
+        if claims:
+            st.write("---")
+            st.markdown("### 🔍 Vérifier ces affirmations sur Internet")
+
+            factcheck_prompt = f"""
+Tu es un assistant spécialisé en vérification factuelle avec accès à la recherche web (browsing).
+
+Ta tâche est de vérifier les affirmations factuelles contenues dans le texte ci-dessous en utilisant des sources fiables disponibles en ligne.
+
+INSTRUCTIONS :
+1. Identifie les principales affirmations factuelles.
+2. Pour chaque affirmation, fais une recherche web rapide.
+3. Pour chaque affirmation, retourne :
+   - Claim : l’affirmation reformulée de façon courte
+   - Verdict : vrai / faux / partiellement vrai / incertain
+   - Sources : 2 à 3 URL de sources fiables
+   - Confiance : un score de 0 à 100
+
+FORMAT DE SORTIE :
+
+### Fact-check web sourcé
+
+| Claim | Verdict | Sources | Confiance |
+|------|---------|---------|-----------|
+
+### Texte à vérifier :
+
+{source_text}
+"""
+
+            query = urllib.parse.quote(factcheck_prompt)
+            chatgpt_url = f"https://chat.openai.com/?q={query}"
+
+            st.markdown(
+                f"[🧪 Ouvrir dans ChatGPT pour vérifier sur Internet]({chatgpt_url})",
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "Clique pour ouvrir ChatGPT avec le texte déjà préparé pour un fact-check web sourcé."
+            )
+
 
     # ───────── ACTIONS ─────────
     st.subheader("Actions possibles")
