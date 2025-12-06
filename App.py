@@ -114,6 +114,43 @@ st.markdown(
         margin-bottom: 0.4rem !important;
         border: 1px solid rgba(15, 23, 42, 0.0) !important;
     }
+
+    /* --- SELECTBOX : lisibilité en dark mode --- */
+
+    /* Boîte fermée */
+    .stSelectbox > div > div {
+        background-color: #020617 !important;
+        color: #f9fafb !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(148, 163, 184, 0.75) !important;
+    }
+
+    /* Label + texte interne */
+    .stSelectbox label,
+    .stSelectbox div[data-baseweb="select"] span {
+        color: #e5e7eb !important;
+    }
+
+    /* Liste déroulante */
+    .stSelectbox [role="listbox"] {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(148, 163, 184, 0.9) !important;
+    }
+
+    /* Options */
+    .stSelectbox [role="option"] {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Option survolée / sélectionnée */
+    .stSelectbox [role="option"][aria-selected="true"],
+    .stSelectbox [role="option"]:hover {
+        background-color: #0f172a !important;
+        color: #f9fafb !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -197,7 +234,6 @@ def is_conversational_type(detected_type: str) -> bool:
 
     t = detected_type.lower()
 
-    # Cas "propres"
     conversational_types = {
         "email",
         "dm",
@@ -211,7 +247,6 @@ def is_conversational_type(detected_type: str) -> bool:
     if t in conversational_types:
         return True
 
-    # Cas plus "sales" : labels combinés ou naturels
     keywords = [
         "mail",
         "e-mail",
@@ -256,7 +291,7 @@ Tu t’adaptes automatiquement au type de contenu :
 - Discours politique → slogans, cadrage idéologique, polarisation
 - Sinon → "other"
 
-Tu dois produire UN JSON STRICT avec le format suivant :
+Tu dois produire UN objet json STRICT avec le format suivant, et rien d’autre que cet objet json :
 
 {
   "meta": {
@@ -372,7 +407,7 @@ Style :
 - Froid, clinique, sans morale.
 - Tu n’inventes pas de faits. Si tu n’es pas sûr : verdict = "incertain" ou "invérifiable".
 - Tu ne fais PAS de politique partisane.
-- Tu n'ajoutes AUCUN texte hors du JSON.
+- Tu n'ajoutes AUCUN texte hors du json.
 """
 
 
@@ -441,39 +476,6 @@ if input_mode == "Texte":
         placeholder="Ex : mail, message, post, discours...",
         key="input_text",
     )
-
-    # ───────── EXEMPLES RAPIDES ─────────
-    st.caption("Besoin d’un exemple ? Teste l’un de ceux-ci :")
-
-    example_col1, example_col2, example_col3 = st.columns(3)
-
-    with example_col1:
-        st.button(
-            "💢 Message agressif",
-            on_click=load_example,
-            kwargs={
-                "text": "T'arrêtes pas de raconter n'importe quoi, t’es complètement ridicule. Personne te respecte ici, tu devrais quitter le forum."
-            },
-        )
-
-    with example_col2:
-        st.button(
-            "🕴️ Manipulation (mail)",
-            on_click=load_example,
-            kwargs={
-                "text": "Bonjour, j’espère que tu vas bien. Il faudrait vraiment que tu m’aides sur ce dossier aujourd’hui, sinon on va tous passer pour des incompétents. Tu ne veux pas que ça arrive, n’est-ce pas ?"
-            },
-        )
-
-    with example_col3:
-        st.button(
-            "🎭 Propagande politique",
-            on_click=load_example,
-            kwargs={
-                "text": "Notre pays est détruit par les mêmes élites depuis 30 ans. Il est temps de reprendre le contrôle, d’abolir leurs privilèges et de les faire payer pour leurs crimes."
-            },
-        )
-
 else:
     st.info(
         "🔗 Analyse par URL arrive bientôt.\n\n"
@@ -490,6 +492,48 @@ with col_analyze:
 with col_clear:
     st.button("Effacer", on_click=reset_all)
 
+# ───────── EXEMPLES RAPIDES (en dessous) ─────────
+if input_mode == "Texte":
+    with st.expander("Besoin d’un exemple ? Clique pour en charger un :"):
+        example_col1, example_col2, example_col3 = st.columns(3)
+
+        with example_col1:
+            st.button(
+                "💢 Message agressif",
+                on_click=load_example,
+                kwargs={
+                    "text": (
+                        "T'arrêtes pas de raconter n'importe quoi, t’es complètement ridicule. "
+                        "Personne ne te respecte ici, tu ferais mieux de quitter le forum."
+                    )
+                },
+            )
+
+        with example_col2:
+            st.button(
+                "🕴️ Manipulation (mail)",
+                on_click=load_example,
+                kwargs={
+                    "text": (
+                        "Bonjour, j’espère que tu vas bien. Il faudrait vraiment que tu m’aides "
+                        "sur ce dossier aujourd’hui, sinon on risque tous de paraître incompétents. "
+                        "Tu ne veux pas que ça arrive, n’est-ce pas ?"
+                    )
+                },
+            )
+
+        with example_col3:
+            st.button(
+                "🎭 Propagande politique",
+                on_click=load_example,
+                kwargs={
+                    "text": (
+                        "Notre pays est détruit par les mêmes élites depuis 30 ans. "
+                        "Il est temps de reprendre le contrôle, d’abolir leurs privilèges "
+                        "et de les faire payer pour leurs crimes."
+                    )
+                },
+            )
 
 # ───────────────── ANALYSE ─────────────────
 
@@ -546,7 +590,6 @@ source_text = st.session_state.get("source_text", "")
 word_count = st.session_state.get("word_count", 0)
 
 if data:
-    # CSS pour les cards SUBTEXT
     st.markdown(
         """
         <style>
@@ -762,7 +805,6 @@ if data:
         st.markdown("#### 💬 Réponse suggérée")
 
         if is_conversational_type(detected_type):
-            # --- Options de réponse (objectif, ton, emojis) ---
             reply_goal = st.selectbox(
                 "Objectif de ta réponse :",
                 [
@@ -793,11 +835,9 @@ if data:
 
             gen_col, reset_col = st.columns([1, 1])
 
-            # Bouton pour générer la réponse
             with gen_col:
                 gen_reply = st.button("Générer une réponse", key="reply_after_analysis")
 
-            # Bouton reset complet (input + analyse + réponse)
             with reset_col:
                 st.button(
                     "🔁 Reset complet",
@@ -805,7 +845,6 @@ if data:
                     on_click=reset_all,
                 )
 
-            # Génération de la réponse si demandé
             if gen_reply:
                 with st.spinner("Rédaction de la réponse..."):
                     try:
@@ -848,7 +887,6 @@ Règles générales :
                     except Exception as e:
                         st.error(f"Erreur lors de la génération de la réponse : {e}")
 
-            # Zone de texte éditable avec la réponse
             reply_text = st.session_state.get("reply_text", "")
             if reply_text:
                 st.text_area(
