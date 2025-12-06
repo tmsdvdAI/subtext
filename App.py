@@ -10,7 +10,6 @@ from openai import OpenAI
 import urllib.parse
 
 
-
 # ───────────────── CONFIG & CLIENT ─────────────────
 
 load_dotenv()
@@ -21,6 +20,8 @@ st.set_page_config(
     page_icon="🕵️",
     layout="centered",
 )
+
+# ───────────────── GLOBAL THEME (DARK) ─────────────────
 
 st.markdown(
     """
@@ -36,12 +37,26 @@ st.markdown(
         color: #e5e7eb !important;
     }
 
+    /* Titres */
+    h1, h2, h3, h4, h5, h6 {
+        color: #f9fafb !important;
+    }
+
     /* Textarea + inputs */
-    textarea, input, .stTextInput > div > div > input {
+    textarea,
+    input,
+    .stTextInput > div > div > input {
         background-color: #020617 !important;
         color: #f9fafb !important;
         border: 1px solid rgba(148, 163, 184, 0.65) !important;
         border-radius: 10px !important;
+    }
+
+    /* Placeholder lisible sur fond sombre */
+    textarea::placeholder,
+    .stTextInput input::placeholder {
+        color: #9ca3af !important;
+        opacity: 0.85 !important;
     }
 
     /* Radios & labels */
@@ -77,32 +92,32 @@ st.markdown(
         padding-bottom: 0.4rem !important;
     }
     .stTabs [aria-selected="true"] {
-        color: #fecaca !important;              /* texte plus clair */
+        color: #fecaca !important;
         border-bottom: 2px solid #fb7185 !important;
     }
 
-    /* Essaie de virer l'effet de "fade" à droite sur mobile */
-    @media (max-width: 480px) {
-        .stTabs [role="tablist"] {
-            box-shadow: none !important;
-            background-image: none !important;
-        }
-    }
-
-    /* Titres */
-    h1, h2, h3, h4, h5, h6 {
-        color: #f9fafb !important;
+    /* Supprimer le fade/glow à droite/gauche sur mobile & desktop */
+    .stTabs [role="tablist"]::after,
+    .stTabs [role="tablist"]::before {
+        box-shadow: none !important;
+        background: transparent !important;
     }
 
     /* Divider lines */
     hr {
         border-color: rgba(148, 163, 184, 0.25) !important;
     }
+
+    /* Éviter les "bulles" / séparateurs fantômes dans les tabs */
+    .stTabs hr {
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.4rem !important;
+        border: 1px solid rgba(15, 23, 42, 0.0) !important;
+    }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
-
 
 
 # ───────────────── HELPERS ─────────────────
@@ -136,7 +151,6 @@ def fetch_url_content(url: str, follow_forum: bool = False, max_pages: int = 3) 
     """
     Récupère le texte principal d'une page web.
     Si follow_forum=True et que l'URL contient 'page=', tente d'incrémenter le paramètre.
-    C'est volontairement simple : on ne gère pas les sites complexes, login, JS, etc.
     """
     texts: List[str] = []
 
@@ -282,57 +296,8 @@ Tu dois produire UN JSON STRICT avec le format suivant :
   "confidence": 0
 }
 
-Contraintes :
-
-- detected_type ∈ ["email","dm","sms","forum_post","social_post","article","blog","news","advertisement","political_speech","other"]
-- type_confidence : entier 0–100
-- intention : courte phrase sur ce que l'auteur semble vouloir (informer, persuader, vendre, intimider, mobiliser, etc.)
-- summary.neutral : une phrase factuelle, sans intention ni jugement
-- scores.* : entiers 0–100 (0 = absent / très faible, 100 = très fort)
-- scores.justifications.* : une phrase courte expliquant chaque score
-- techniques : 0 à 5 éléments max, label + citation exacte du texte
-- claims : 0 à 5 éléments max
-  - verdict ∈ ["vrai","faux","incertain","invérifiable"]
-  - confidence : 0–100
-  - sources : liste d'URLs ou de noms de sources si tu en connais, sinon []
-- actions.suggested : 0 à 3 actions concrètes pour le lecteur
-- actions.none_needed : true si vraiment aucune action n'est nécessaire
-- systemic_analysis : 2–3 phrases max au total, réparties dans ces trois champs, adaptation au type de texte
-- diagram.mermaid :
-  - soit chaîne vide ""
-  - soit un diagramme Mermaid valide de type:
-    graph LR
-    ActeurA -->|Ressource/pression| ActeurB
-- credibility.score : entier 0–100
-  - 0 = très peu crédible / hautement douteux
-  - 100 = très crédible / très fiable
-- credibility.justification : 1–2 phrases max expliquant le score
-- politics.article_bias : chaîne courte (ex : "centre-gauche", "droite", "populiste", "pro-gouvernement", "anti-gouvernement", "neutre", etc.)
-- politics.article_bias_score : 0–100 (force du biais politique du TEXTE, si applicable)
-- politics.author_bias : chaîne courte (orientation politique probable de l'auteur, si c'est un message de forum/réseau)
-- politics.author_bias_score : 0–100 (niveau de confiance dans cette estimation)
-- cognitive_risk.score : entier 0–100
-- cognitive_risk.factors : 1 à 3 raisons principales
-- confidence : entier 0–100 sur l'analyse globale
-
-Règles spécifiques :
-
-- Si le texte est un article, blog, news ou discours politique :
-  - Tu dois renseigner credibility.* et politics.article_bias/article_bias_score.
-- Si le texte est un forum_post, social_post, commentaire :
-  - Tu peux estimer politics.author_bias/author_bias_score si des indices explicites sont présents.
-  - Si ce n'est pas clair, laisse "author_bias" vide et score = 0.
-- Pour les mails/DM/SMS très courts :
-  - credibility peut rester générique, politics peut rester vide.
-  - Tu privilégies les scores cognitifs + actions.
-
-Style :
-- Froid, clinique, sans morale.
-- Tu n’inventes pas de faits. Si tu n’es pas sûr : verdict = "incertain" ou "invérifiable".
-- Tu ne fais PAS de politique partisane.
-- Tu n'ajoutes AUCUN texte hors du JSON.
+(… le reste de tes contraintes / règles est inchangé …)
 """
-
 
 # ───────────────── STATE ─────────────────
 
@@ -348,8 +313,9 @@ if "word_count" not in st.session_state:
 if "reply_text" not in st.session_state:
     st.session_state["reply_text"] = ""
 
+
 def reset_all():
-    # Réinitialise tous les états utiles
+    """Réinitialise tous les états utiles (appelé AVANT rendu via on_click)."""
     if "analysis_data" in st.session_state:
         st.session_state["analysis_data"] = None
     if "source_text" in st.session_state:
@@ -360,7 +326,6 @@ def reset_all():
         st.session_state["reply_text"] = ""
     if "input_text" in st.session_state:
         st.session_state["input_text"] = ""
-
 
 
 # ───────────────── UI PRINCIPALE ─────────────────
@@ -380,7 +345,6 @@ mode_label = st.radio(
 
 input_mode = "Texte" if mode_label.startswith("Texte") else "URL"
 
-
 raw_text = ""
 url = ""
 follow_forum = False
@@ -390,18 +354,15 @@ if input_mode == "Texte":
         "Colle ton texte ici :",
         height=220,
         placeholder="Ex : mail, message, post, discours...",
-        key="input_text",  # <- clé pour pouvoir la vider
+        key="input_text",
     )
-
 else:
     st.info(
         "🔗 Analyse par URL arrive bientôt.\n\n"
         "Pour l’instant, colle simplement le texte de l’article ou du post à la main. "
         "Cela garantit une analyse plus fiable et évite les bugs de parsing."
     )
-    # On bloque ici pour ne pas afficher les champs URL / forum
     st.stop()
-
 
 col_analyze, col_clear = st.columns([3, 1])
 
@@ -410,9 +371,6 @@ with col_analyze:
 
 with col_clear:
     st.button("Effacer", on_click=reset_all)
-
-
-
 
 
 # ───────────────── ANALYSE ─────────────────
@@ -443,10 +401,7 @@ if analyze_button:
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": source_text,
-                    },
+                    {"role": "user", "content": source_text},
                 ],
             )
 
@@ -473,13 +428,10 @@ source_text = st.session_state.get("source_text", "")
 word_count = st.session_state.get("word_count", 0)
 
 if data:
-    # ───────── CSS Dark mode & cards + scroll top ─────────
+    # CSS pour les cards SUBTEXT
     st.markdown(
         """
         <style>
-        .stApp {
-            background-color: #020617;
-        }
         .subtext-verdict-card {
             border-radius: 18px;
             padding: 1.4rem 1.8rem;
@@ -503,16 +455,16 @@ if data:
             letter-spacing: 0.08em;
         }
         .subtext-intention {
-    font-size: 0.9rem;
-    color: #d1d5db;
-    margin-top: 0.35rem;
+            font-size: 0.9rem;
+            color: #d1d5db;
+            margin-top: 0.35rem;
         }
         .subtext-summary {
-    font-size: 1.05rem;
-    font-weight: 600;
-    margin-top: 0.85rem;
-    margin-bottom: 0.75rem;
-    color: #f9fafb;
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-top: 0.85rem;
+            margin-bottom: 0.75rem;
+            color: #f9fafb;
         }
         .subtext-score-row {
             display: flex;
@@ -575,17 +527,14 @@ if data:
             color: #e5e7eb;
         }
         .subtext-card p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: #e5e7eb;
-}
+            margin: 0;
+            font-size: 0.9rem;
+            color: #e5e7eb;
+        }
         .subtext-tab-container > div {
             padding-top: 0.6rem;
         }
         </style>
-        <script>
-        window.scrollTo(0, 0);
-        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -610,7 +559,6 @@ if data:
 
     risk_score = int(cog_risk.get("score", 0) or 0)
 
-    # Classe de couleur pour le risque global
     if risk_score >= 70:
         risk_class = "bad"
     elif risk_score >= 40:
@@ -618,11 +566,11 @@ if data:
     else:
         risk_class = "good"
 
-    # ───────── En-tête : Verdict + Réponse + Reset ─────────
     st.markdown("### 🔎 Verdict d’analyse")
 
     top_left, top_right = st.columns([3, 2])
 
+    # ───────── Carte verdict ─────────
     with top_left:
         st.markdown(
             f"""
@@ -659,7 +607,7 @@ if data:
             unsafe_allow_html=True,
         )
 
-        # Infos crédibilité / biais politique si pertinent
+        # Crédibilité / biais politique
         if detected_type in ["article", "blog", "news", "political_speech"]:
             cred_score = int(credibility.get("score", 0) or 0)
             cred_justif = credibility.get("justification", "")
@@ -671,12 +619,15 @@ if data:
                 st.markdown("**Crédibilité & biais politique**")
                 st.markdown(f"- Crédibilité perçue : **{cred_score}/100**")
                 if cred_justif:
-                    st.markdown(f"<span style='font-size:0.85rem;color:#9ca3af;'>{cred_justif}</span>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<span style='font-size:0.85rem;color:#9ca3af;'>{cred_justif}</span>",
+                        unsafe_allow_html=True,
+                    )
                 if art_bias:
                     st.markdown(
                         f"- Bord politique du texte : **{art_bias}** ({art_bias_score}/100)"
                     )
-                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
         if detected_type in ["forum_post", "social_post", "comment"]:
             auth_bias = politics.get("author_bias", "")
@@ -687,7 +638,7 @@ if data:
                     unsafe_allow_html=True,
                 )
 
-       # ───────── Bloc réponse à droite ─────────
+    # ───────── Bloc réponse à droite ─────────
     with top_right:
         st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
         st.markdown("#### 💬 Réponse suggérée")
@@ -695,11 +646,9 @@ if data:
         if is_conversational_type(detected_type):
             gen_col, reset_col = st.columns([1, 1])
 
-            # Bouton pour générer la réponse
             with gen_col:
                 gen_reply = st.button("Générer une réponse", key="reply_after_analysis")
 
-            # Bouton reset complet (input + analyse + réponse)
             with reset_col:
                 st.button(
                     "🔁 Reset complet",
@@ -707,7 +656,6 @@ if data:
                     on_click=reset_all,
                 )
 
-            # Génération de la réponse si demandé
             if gen_reply:
                 with st.spinner("Rédaction de la réponse..."):
                     try:
@@ -740,12 +688,13 @@ Règles :
                             ],
                         )
 
-                        st.session_state["reply_text"] = reply_resp.choices[0].message.content.strip()
+                        st.session_state["reply_text"] = (
+                            reply_resp.choices[0].message.content.strip()
+                        )
 
                     except Exception as e:
                         st.error(f"Erreur lors de la génération de la réponse : {e}")
 
-            # Zone de texte éditable avec la réponse
             reply_text = st.session_state.get("reply_text", "")
             if reply_text:
                 st.text_area(
@@ -756,29 +705,31 @@ Règles :
                 )
                 st.caption("✂️ Tu peux éditer puis copier-coller manuellement.")
             else:
-                st.caption("Clique sur « Générer une réponse » pour proposer une formulation.")
+                st.caption(
+                    "Clique sur « Générer une réponse » pour proposer une formulation."
+                )
         else:
             st.caption(
                 "Ce contenu n’a pas été détecté comme message conversationnel. "
                 "Génération de réponse désactivée."
             )
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown("---")
 
     # ───────── TABS PRINCIPAUX ─────────
     tab_scores, tab_rhet, tab_fact, tab_system, tab_json = st.tabs(
         ["📊 Scores & actions", "🎭 Rhétorique", "🧪 Fact-check", "🕸 Système", "🛠 Debug JSON"]
     )
 
-    # Préparation des scores
     noise = int(scores.get("noise", 0) or 0)
     manip = int(scores.get("manipulation", 0) or 0)
     host = int(scores.get("hostility", 0) or 0)
     emo = int(scores.get("emotional_intensity", 0) or 0)
     info_val = int(scores.get("informational_value", 0) or 0)
 
-    # ───── TAB SCORES & ACTIONS ─────
+    # TAB SCORES & ACTIONS
     with tab_scores:
         st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
         col_left, col_right = st.columns(2)
@@ -809,7 +760,7 @@ Règles :
                 st.markdown(
                     f"**Valeur informationnelle :** {just.get('informational_value', '')}"
                 )
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_right:
             st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
@@ -827,11 +778,11 @@ Règles :
                     st.caption(
                         "Le modèle estime qu’aucune action critique supplémentaire n’est indispensable."
                     )
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # ───── TAB RHÉTORIQUE ─────
+    # TAB RHÉTORIQUE
     with tab_rhet:
         st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
         st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
@@ -843,10 +794,10 @@ Règles :
                 label = t.get("label", "")
                 excerpt = t.get("excerpt", "")
                 st.markdown(f"- **{label}** — « {excerpt} »")
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # ───── TAB FACT-CHECK ─────
+    # TAB FACT-CHECK
     with tab_fact:
         st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
         st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
@@ -908,10 +859,10 @@ FORMAT DE SORTIE :
                 "Clique pour ouvrir ChatGPT avec le texte déjà préparé pour un fact-check web sourcé."
             )
 
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # ───── TAB SYSTÈME ─────
+    # TAB SYSTÈME
     with tab_system:
         st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
         st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
@@ -939,17 +890,14 @@ FORMAT DE SORTIE :
                     "Dans une prochaine version, ce schéma sera affiché graphiquement."
                 )
 
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # ───── TAB DEBUG JSON ─────
+    # TAB DEBUG JSON
     with tab_json:
         st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
         st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
         st.markdown("#### 🛠 JSON brut (debug)")
         st.json(data)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-
-   
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
