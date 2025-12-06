@@ -197,7 +197,7 @@ def is_conversational_type(detected_type: str) -> bool:
 
     t = detected_type.lower()
 
-    # Cas "propres" (valeurs prévues dans le JSON)
+    # Cas "propres"
     conversational_types = {
         "email",
         "dm",
@@ -211,7 +211,7 @@ def is_conversational_type(detected_type: str) -> bool:
     if t in conversational_types:
         return True
 
-    # Cas plus "sales" : labels combinés ou custom du modèle
+    # Cas plus "sales" : labels combinés ou naturels
     keywords = [
         "mail",
         "e-mail",
@@ -228,13 +228,11 @@ def is_conversational_type(detected_type: str) -> bool:
         "commentaire",
         "post",
     ]
-
     return any(k in t for k in keywords)
 
 
 def count_words(text: str) -> int:
     return len(re.findall(r"\w+", text))
-
 
 
 # ───────────────── PROMPT MOTEUR ─────────────────
@@ -326,8 +324,57 @@ Tu dois produire UN JSON STRICT avec le format suivant :
   "confidence": 0
 }
 
-(… le reste de tes contraintes / règles est inchangé …)
+Contraintes :
+
+- detected_type ∈ ["email","dm","sms","forum_post","social_post","article","blog","news","advertisement","political_speech","other"]
+- type_confidence : entier 0–100
+- intention : courte phrase sur ce que l'auteur semble vouloir (informer, persuader, vendre, intimider, mobiliser, etc.)
+- summary.neutral : une phrase factuelle, sans intention ni jugement
+- scores.* : entiers 0–100 (0 = absent / très faible, 100 = très fort)
+- scores.justifications.* : une phrase courte expliquant chaque score
+- techniques : 0 à 5 éléments max, label + citation exacte du texte
+- claims : 0 à 5 éléments max
+  - verdict ∈ ["vrai","faux","incertain","invérifiable"]
+  - confidence : 0–100
+  - sources : liste d'URLs ou de noms de sources si tu en connais, sinon []
+- actions.suggested : 0 à 3 actions concrètes pour le lecteur
+- actions.none_needed : true si vraiment aucune action n'est nécessaire
+- systemic_analysis : 2–3 phrases max au total, réparties dans ces trois champs, adaptation au type de texte
+- diagram.mermaid :
+  - soit chaîne vide ""
+  - soit un diagramme Mermaid valide de type:
+    graph LR
+    ActeurA -->|Ressource/pression| ActeurB
+- credibility.score : entier 0–100
+  - 0 = très peu crédible / hautement douteux
+  - 100 = très crédible / très fiable
+- credibility.justification : 1–2 phrases max expliquant le score
+- politics.article_bias : chaîne courte (ex : "centre-gauche", "droite", "populiste", "pro-gouvernement", "anti-gouvernement", "neutre", etc.)
+- politics.article_bias_score : 0–100 (force du biais politique du TEXTE, si applicable)
+- politics.author_bias : chaîne courte (orientation politique probable de l'auteur, si c'est un message de forum/réseau)
+- politics.author_bias_score : 0–100 (niveau de confiance dans cette estimation)
+- cognitive_risk.score : entier 0–100
+- cognitive_risk.factors : 1 à 3 raisons principales
+- confidence : entier 0–100 sur l'analyse globale
+
+Règles spécifiques :
+
+- Si le texte est un article, blog, news ou discours politique :
+  - Tu dois renseigner credibility.* et politics.article_bias/article_bias_score.
+- Si le texte est un forum_post, social_post, commentaire :
+  - Tu peux estimer politics.author_bias/author_bias_score si des indices explicites sont présents.
+  - Si ce n'est pas clair, laisse "author_bias" vide et score = 0.
+- Pour les mails/DM/SMS très courts :
+  - credibility peut rester générique, politics peut rester vide.
+  - Tu privilégies les scores cognitifs + actions.
+
+Style :
+- Froid, clinique, sans morale.
+- Tu n’inventes pas de faits. Si tu n’es pas sûr : verdict = "incertain" ou "invérifiable".
+- Tu ne fais PAS de politique partisane.
+- Tu n'ajoutes AUCUN texte hors du JSON.
 """
+
 
 # ───────────────── STATE ─────────────────
 
@@ -358,6 +405,14 @@ def reset_all():
         st.session_state["input_text"] = ""
 
 
+def load_example(text: str):
+    """Charge un exemple dans la zone de texte et reset l'analyse."""
+    st.session_state["input_text"] = text
+    st.session_state["analysis_data"] = None
+    st.session_state["reply_text"] = ""
+    st.session_state["word_count"] = 0
+
+
 # ───────────────── UI PRINCIPALE ─────────────────
 
 st.title("SUBTEXT — voir ce que les mots font à ta tête 🕵️")
@@ -386,6 +441,39 @@ if input_mode == "Texte":
         placeholder="Ex : mail, message, post, discours...",
         key="input_text",
     )
+
+    # ───────── EXEMPLES RAPIDES ─────────
+    st.caption("Besoin d’un exemple ? Teste l’un de ceux-ci :")
+
+    example_col1, example_col2, example_col3 = st.columns(3)
+
+    with example_col1:
+        st.button(
+            "💢 Message agressif",
+            on_click=load_example,
+            kwargs={
+                "text": "T'arrêtes pas de raconter n'importe quoi, t’es complètement ridicule. Personne te respecte ici, tu devrais quitter le forum."
+            },
+        )
+
+    with example_col2:
+        st.button(
+            "🕴️ Manipulation (mail)",
+            on_click=load_example,
+            kwargs={
+                "text": "Bonjour, j’espère que tu vas bien. Il faudrait vraiment que tu m’aides sur ce dossier aujourd’hui, sinon on va tous passer pour des incompétents. Tu ne veux pas que ça arrive, n’est-ce pas ?"
+            },
+        )
+
+    with example_col3:
+        st.button(
+            "🎭 Propagande politique",
+            on_click=load_example,
+            kwargs={
+                "text": "Notre pays est détruit par les mêmes élites depuis 30 ans. Il est temps de reprendre le contrôle, d’abolir leurs privilèges et de les faire payer pour leurs crimes."
+            },
+        )
+
 else:
     st.info(
         "🔗 Analyse par URL arrive bientôt.\n\n"
@@ -674,11 +762,42 @@ if data:
         st.markdown("#### 💬 Réponse suggérée")
 
         if is_conversational_type(detected_type):
+            # --- Options de réponse (objectif, ton, emojis) ---
+            reply_goal = st.selectbox(
+                "Objectif de ta réponse :",
+                [
+                    "Répondre simplement",
+                    "Poser un cadre / des limites",
+                    "Apaiser / rassurer",
+                    "Exprimer un désaccord calmement",
+                    "Refuser poliment",
+                ],
+                index=0,
+            )
+
+            reply_tone = st.selectbox(
+                "Ton souhaité :",
+                [
+                    "Neutre",
+                    "Chaleureux / amical",
+                    "Professionnel",
+                    "Direct mais poli",
+                ],
+                index=0,
+            )
+
+            use_emojis = st.checkbox(
+                "Autoriser les emojis si c’est naturel",
+                value=True,
+            )
+
             gen_col, reset_col = st.columns([1, 1])
 
+            # Bouton pour générer la réponse
             with gen_col:
                 gen_reply = st.button("Générer une réponse", key="reply_after_analysis")
 
+            # Bouton reset complet (input + analyse + réponse)
             with reset_col:
                 st.button(
                     "🔁 Reset complet",
@@ -686,18 +805,22 @@ if data:
                     on_click=reset_all,
                 )
 
+            # Génération de la réponse si demandé
             if gen_reply:
                 with st.spinner("Rédaction de la réponse..."):
                     try:
                         reply_system_prompt = f"""
 Tu écris une réponse courte au texte donné.
-Règles :
+
+Règles générales :
 - Même langue que le texte d'origine.
-- Ton adapté au type détecté (email professionnel, message amical, forum, etc.).
+- Ton : {reply_tone}.
+- Objectif principal : {reply_goal}.
 - Toujours respectueux, assertif, jamais agressif.
 - Va droit au but, sans phrases inutiles.
 - Ta réponse doit rester plus courte que le texte d'origine, idéalement 50–80% de son nombre de mots (~{int(word_count * 0.8)} mots max).
-- Ne reformule pas le texte d'origine, réponds réellement.
+- Ne reformule pas le texte d'origine, réponds réellement à son contenu.
+- Emojis autorisés : {"oui, mais avec parcimonie" if use_emojis else "non, n'en mets aucun"}.
 """
 
                         reply_user_content = (
@@ -706,7 +829,7 @@ Règles :
                             f"{source_text}\n\n"
                             "Contexte d'analyse (résumé neutre) :\n"
                             f"{neutral_summary}\n\n"
-                            "Intention apparente :\n"
+                            "Intention apparente détectée par SUBTEXT :\n"
                             f"{intention}\n"
                         )
 
@@ -725,6 +848,7 @@ Règles :
                     except Exception as e:
                         st.error(f"Erreur lors de la génération de la réponse : {e}")
 
+            # Zone de texte éditable avec la réponse
             reply_text = st.session_state.get("reply_text", "")
             if reply_text:
                 st.text_area(
@@ -745,8 +869,6 @@ Règles :
             )
 
         st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("---")
 
     # ───────── TABS PRINCIPAUX ─────────
     tab_scores, tab_rhet, tab_fact, tab_system, tab_json = st.tabs(
