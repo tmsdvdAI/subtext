@@ -1,9 +1,17 @@
 import os
 import json
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
+import html as html_lib
 
 import streamlit as st
 from openai import OpenAI
+import requests
+
+# BeautifulSoup facultatif pour extraire le texte HTML
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 # ───────────────── CONFIG GLOBALE ─────────────────
 
@@ -16,24 +24,35 @@ st.set_page_config(
 
 client = OpenAI()
 
+# Modèle LLM principal (flagship)
+OPENAI_MAIN_MODEL = "gpt-5.1"
+
 # ───────────────── STYLES GLOBAUX (Dark / Mobile-first) ─────────────────
 
 st.markdown(
     """
     <style>
+    /* Forcer le dark mode partout */
+    html, body, .stApp {
+        background-color: #020617 !important;
+        color: #F9FAFB !important;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+    [data-testid="stAppViewContainer"] {
+        background-color: #020617 !important;
+    }
+    [data-testid="stHeader"] {
+        background-color: rgba(0, 0, 0, 0) !important;
+    }
     .block-container {
         padding-top: 1rem;
         padding-bottom: 1.5rem;
         max-width: 700px;
     }
-    body {
-        background-color: #0E0E10;
-        color: #F9FAFB;
-        font-family: -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
-    }
     h1, h2, h3, h4 {
         font-weight: 600;
         letter-spacing: 0.02em;
+        color: #F9FAFB;
     }
     .hero-card {
         border-radius: 18px;
@@ -80,6 +99,7 @@ st.markdown(
         font-size: 1.0rem;
         font-weight: 600;
         margin-bottom: 0.3rem;
+        color: #F9FAFB;
     }
     .share-sub {
         font-size: 0.85rem;
@@ -91,6 +111,61 @@ st.markdown(
     }
     textarea {
         font-size: 0.9rem !important;
+        background-color: #020617 !important;
+        color: #F9FAFB !important;
+    }
+    input {
+        background-color: #020617 !important;
+        color: #F9FAFB !important;
+    }
+
+    /* Tabs (sections) plus visibles, scrollables sur mobile */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.25rem;
+        scrollbar-width: thin;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px 999px 0 0;
+        color: #E5E7EB;
+        font-size: 0.9rem;
+    }
+    .stTabs [aria-selected="true"] {
+        border-bottom: 2px solid #F97373;
+        color: #F97373 !important;
+        font-weight: 600;
+    }
+
+    /* Bloc de réponse + bouton copier (pas de scroll horizontal) */
+    .reply-block {
+        margin-top: 0.6rem;
+    }
+    .reply-text {
+        width: 100%;
+        min-height: 90px;
+        background-color: #020617;
+        color: #F9FAFB;
+        border-radius: 12px;
+        border: 1px solid #374151;
+        padding: 0.75rem;
+        resize: vertical;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+    }
+    .copy-btn {
+        margin-top: 0.5rem;
+        border-radius: 999px;
+        border: 1px solid #4B5563;
+        background: #111827;
+        color: #E5E7EB;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .copy-btn:hover {
+        border-color: #F97373;
+        color: #F97373;
     }
     </style>
     """,
@@ -119,6 +194,77 @@ DEMO_TWEET_POLITIQUE = (
     "qui ont quelque chose à cacher. #SécuritéAvantTout"
 )
 
+# ───────────────── HELPERS URL ─────────────────
+
+
+def fetch_url_text(url: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Essaie de récupérer le texte principal d'une URL.
+    Retourne (texte, erreur).
+    Si erreur != None → on affiche un wording clair invitant à copier-coller.
+    """
+    url = url.strip()
+    if not url:
+        return None, "Merci de saisir une URL valide."
+
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url
+
+    try:
+        resp = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; SUBTEXT/0.1)"},
+            timeout=10,
+        )
+    except Exception:
+        return (
+            None,
+            "Impossible de récupérer cette page automatiquement. "
+            "Certains sites protègent leur contenu ou nécessitent du JavaScript. "
+            "Copie-colle le texte directement dans l'onglet « Texte ».",
+        )
+
+    if resp.status_code != 200 or "text/html" not in resp.headers.get("Content-Type", ""):
+        return (
+            None,
+            "Je n'arrive pas à extraire le texte de cette URL (protection, JavaScript, Cloudflare...). "
+            "Copie-colle le contenu dans l'onglet « Texte » pour l'analyser.",
+        )
+
+    html = resp.text
+
+    # Protection Cloudflare / JS / pages vides
+    if "cf-browser-verification" in html.lower() or "cf-challenge" in html.lower():
+        return (
+            None,
+            "Cette page semble protégée (Cloudflare / JavaScript). "
+            "Je ne peux pas extraire automatiquement le contenu. "
+            "Copie-colle le texte dans l'onglet « Texte ». ",
+        )
+
+    if BeautifulSoup is None:
+        # Fallback très simple si bs4 pas installée
+        return (
+            None,
+            "Je peux accéder à la page, mais je ne dispose pas de l'outil pour extraire proprement le texte. "
+            "Installe `beautifulsoup4` ou copie-colle directement le texte.",
+        )
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    # Naïf : on concatène les paragraphes
+    paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
+    text = "\n\n".join(p for p in paragraphs if p)
+
+    if not text.strip():
+        return (
+            None,
+            "Je n'ai pas réussi à trouver du texte exploitable sur cette page. "
+            "Copie-colle le contenu à analyser dans l'onglet « Texte ». ",
+        )
+
+    return text, None
+
 # ───────────────── LLM : ANALYSE ─────────────────
 
 
@@ -135,7 +281,7 @@ Produire une ANALYSE STRUCTURÉE, JSON UNIQUEMENT, qui aide l'utilisateur à :
 2) Comprendre la logique de pouvoir, les intérêts et la mise en scène (méso / macro).
 3) Détecter hostilité, manipulation, pression sociale.
 4) Repérer les passages problématiques (citations + explication).
-5) Pour les articles / discours : proposer un début de FACT-CHECK avec verdict + sources.
+5) Pour les articles / discours : proposer un début de FACT-CHECK avec verdict + sources quand tu as une base solide.
 6) Proposer des actions recommandées (réagir / ne pas réagir / enquêter / partager ou non).
 
 ⚠️ Tu restes sobre, nuancé, pédagogique. Pas de catastrophisme.
@@ -181,10 +327,10 @@ Produire une ANALYSE STRUCTURÉE, JSON UNIQUEMENT, qui aide l'utilisateur à :
 
   "systemic_view": {
     "scale": "micro"|"méso"|"macro"|"micro→macro",
-    "power_dynamics": "1–3 phrases expliquant qui gagne, qui perd, qui décide",
-    "narrative_frame": "comment le texte cadre le problème (ex: sécurité vs liberté, mérite individuel, crise permanente, etc.)",
+    "power_dynamics": "2–4 phrases, vulgarisées, expliquant qui a l'avantage, qui subit, et comment le message entretient ce rapport de force",
+    "narrative_frame": "2–3 phrases simples expliquant comment le texte cadre le problème (ex: sécurité vs liberté, mérite individuel, crise permanente, responsabilité personnelle vs collective, etc.)",
     "macro_implications": [
-      "1–3 phrases sur les effets possibles à long terme (confiance, polarisation, cynisme, mobilisation, abstention...)"
+      "jusqu'à 3 phrases (ou puces) décrivant les effets possibles à moyen / long terme sur la confiance, la coopération, la polarisation, la capacité des gens à discuter sereinement"
     ]
   },
 
@@ -202,7 +348,7 @@ Produire une ANALYSE STRUCTURÉE, JSON UNIQUEMENT, qui aide l'utilisateur à :
       "verdict": "vrai" | "faux" | "partiellement vrai" | "incertain",
       "explanation": "explication courte et nuancée du verdict",
       "sources": [
-        "https://... (source potentielle, institutionnelle ou média reconnu)",
+        "https://... (source institutionnelle ou média reconnu si tu en as une en mémoire)",
         "https://..."
       ]
     }
@@ -235,11 +381,12 @@ Produire une ANALYSE STRUCTURÉE, JSON UNIQUEMENT, qui aide l'utilisateur à :
 - 81–100: très élevé / fortement toxique ou manipulateur
 
 3) Fact-check :
-- Tu N'AS PAS accès au web en temps réel, mais tu peux utiliser tes connaissances générales.
-- Si tu n'es pas sûr : verdict = "incertain" + sources = [].
-- Tu ne forces pas : seulement 1–4 "fact_checks" vraiment importants pour comprendre.
+- Tu utilises tes connaissances internes.
+- Tu ne remplis "fact_checks" que si tu as une base raisonnable.
+- Si tu n'es pas sûr : verdict = "incertain" et "sources": [].
 
 4) Systemic view :
+- Tu expliques les choses pour un public non spécialiste, avec un vocabulaire simple.
 - Tu relies le micro au macro : quels récits, quels rapports de force, quelle vision du monde ?
 - Tu restes sobre, analytique, pas militant.
 
@@ -252,7 +399,7 @@ Format de sortie :
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=OPENAI_MAIN_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -277,20 +424,38 @@ def generate_replies_with_llm(
     """
     Second appel LLM : génère uniquement les réponses proposées,
     une fois l'analyse déjà faite et affichée.
+    Répond TOUJOURS au nom de la personne qui a REÇU le message.
     """
     system_prompt = """
 Tu es SUBTEXT-REPLY, spécialisé dans les réponses calmes et assertives.
 
+Point de vue :
+- Tu écris AU NOM DE LA PERSONNE QUI REÇOIT le message, pas de la personne qui l'a envoyé.
+- Ex : si le texte est un mail de manager, tu écris du point de vue de l'employé qui répond.
+
 Mission :
 - À partir du TEXTE ORIGINAL + d'un RÉSUMÉ D'ANALYSE fourni,
 - Générer 2 réponses possibles :
-  1) "calm" : posée, factuelle, sans attaque, recentrée sur les faits ou les besoins.
+  1) "calm" : posée, factuelle, sans attaque, recentrée sur les faits / besoins.
   2) "assertive" : posée mais ferme, pose des limites claires, sans insulte ni mépris.
 
+Tons possibles (tu adapteras en fonction de la consigne) :
+- "calme" : vocabulaire simple, phrases courtes, pas d'attaque.
+- "professionnel" : formulation polie, structurée, neutre.
+- "empathique" : reconnaissance du ressenti, douceur.
+- "direct mais respectueux" : va au point important, mais sans agressivité.
+- "humour léger" : 1 ou 2 petites touches d'humour, jamais humiliant.
+
+Emojis :
+- Si l'utilisateur autorise les emojis :
+  - Tu peux en mettre 1–2 maximum, cohérents avec le ton.
+- Sinon :
+  - Aucun emoji, jamais.
+
 Contraintes :
-- Tu respectes le ton demandé par l'utilisateur (ex: professionnel, empathique...).
-- Tu respectes la consigne "emoji autorisés" ou non.
-- Tu n'en rajoutes pas dans le conflit.
+- 1–4 phrases max par réponse.
+- Pas de psychanalyse, pas de jugement global ("tu es toxique").
+- Pas de répétition inutile du contenu initial.
 - Tu n'expliques pas ta réponse, tu ne renvoies que le JSON ci-dessous.
 
 Format JSON STRICT :
@@ -313,7 +478,7 @@ Format JSON STRICT :
     }
 
     user_prompt = f"""
-Texte original :
+Texte original reçu :
 
 {original_text}
 
@@ -331,7 +496,7 @@ Génère UNIQUEMENT un JSON avec deux champs :
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=OPENAI_MAIN_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -348,7 +513,6 @@ Génère UNIQUEMENT un JSON avec deux champs :
     except Exception as e:
         st.error(f"Erreur lors de la génération de réponse : {e}")
         return {"calm": "", "assertive": ""}
-
 
 # ───────────────── HELPERS UI ─────────────────
 
@@ -373,12 +537,31 @@ def get_score_color(score: int) -> str:
 
 
 def reset_app():
-    """Callback Reset : évite le bug Streamlit en modifiant avant instanciation."""
-    keys_to_clear = ["input_text", "analysis", "replies"]
+    """Callback Reset : nettoie la session proprement."""
+    keys_to_clear = ["input_text", "input_url", "analysis", "replies"]
     for k in keys_to_clear:
         if k in st.session_state:
             del st.session_state[k]
 
+
+def render_reply_block(title: str, text: str):
+    """Bloc réponse + bouton copier (sans scroll horizontal)."""
+    if not text:
+        return
+    escaped = html_lib.escape(text)
+    js_text = json.dumps(text)  # string JS sécurisé
+    st.markdown(
+        f"""
+        <div class="reply-block sub-card">
+          <div style="font-size:0.9rem;margin-bottom:0.4rem;">{title}</div>
+          <textarea class="reply-text" readonly>{escaped}</textarea>
+          <button class="copy-btn" onclick='navigator.clipboard.writeText({js_text})'>
+            📋 Copier la réponse
+          </button>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ───────────────── INITIALISATION SESSION ─────────────────
 
@@ -396,6 +579,12 @@ if "emoji_allowed" not in st.session_state:
 
 if "input_text" not in st.session_state:
     st.session_state["input_text"] = ""
+
+if "input_url" not in st.session_state:
+    st.session_state["input_url"] = ""
+
+if "input_mode" not in st.session_state:
+    st.session_state["input_mode"] = "Texte"
 
 # ───────────────── HEADER ─────────────────
 
@@ -434,18 +623,32 @@ with col_demo3:
 
 st.markdown("")
 
-# ───────────────── INPUT ZONE ─────────────────
+# ───────────────── INPUT MODE (Texte / URL) ─────────────────
 
-st.markdown("**Colle ici le texte, tweet, DM, article ou discours :**")
-
-st.text_area(
-    label="",
-    key="input_text",
-    height=180,
-    placeholder="Colle le message, l'article, le discours ou le post ici…",
+input_mode = st.radio(
+    "Mode d'entrée",
+    ["Texte", "URL"],
+    horizontal=True,
+    key="input_mode",
 )
 
-input_text = st.session_state["input_text"]
+if input_mode == "Texte":
+    st.markdown("**Colle ici le texte, tweet, DM, article ou discours :**")
+    st.text_area(
+        label="",
+        key="input_text",
+        height=180,
+        placeholder="Colle le message, l'article, le discours ou le post ici…",
+    )
+    input_text = st.session_state["input_text"]
+else:
+    st.markdown("**Colle ici l'URL de l'article / discours à analyser :**")
+    st.text_input(
+        label="",
+        key="input_url",
+        placeholder="https://...",
+    )
+    input_text = ""  # sera rempli après fetch
 
 col_scan, col_reset = st.columns([3, 1])
 
@@ -456,8 +659,24 @@ with col_reset:
     st.button("🧹 Reset", use_container_width=True, on_click=reset_app)
 
 if scan_clicked:
+    # Gestion URL → texte
+    if input_mode == "URL":
+        url = st.session_state.get("input_url", "").strip()
+        if not url:
+            st.warning("Merci de saisir une URL à analyser.")
+        else:
+            with st.spinner("Récupération du contenu de la page…"):
+                fetched_text, err = fetch_url_text(url)
+            if err:
+                st.warning(err)
+                st.stop()
+            else:
+                input_text = fetched_text
+    else:
+        input_text = st.session_state.get("input_text", "")
+
     if not input_text.strip():
-        st.warning("Colle d'abord un texte à analyser.")
+        st.warning("Colle d'abord un texte à analyser (ou choisis une URL).")
     else:
         with st.spinner("Analyse en cours…"):
             analysis = analyze_text_with_llm(input_text)
@@ -476,7 +695,7 @@ if not analysis:
     st.markdown(
         "<p style='color:#9CA3AF;font-size:0.9rem;'>"
         "Tu verras ici le tableau de bord cognitif après l'analyse. "
-        "Commence avec un des exemples ci-dessus ou colle ton propre texte."
+        "Commence avec un des exemples ci-dessus, colle un texte, ou fournis une URL."
         "</p>",
         unsafe_allow_html=True,
     )
@@ -554,15 +773,14 @@ st.markdown("</div>", unsafe_allow_html=True)  # fin hero-card
 
 st.markdown("")
 
-# ───────────────── TABS PRINCIPAUX ─────────────────
+# ───────────────── NAVIGATION PRINCIPALE (Tabs) ─────────────────
 
-tab_diag, tab_systemic, tab_fact, tab_actions, tab_reply = st.tabs(
-    ["🧩 Diagnostic", "🌐 Systémique", "🧪 Fact-check", "🎯 Actions", "🛡️ Réponse"]
-)
+tab_labels = ["🧩 Diagnostic", "🌐 Systémique", "🧪 Fact-check", "🎯 Actions", "🛡️ Réponse"]
+tabs = st.tabs(tab_labels)
 
-# ───── TAB DIAGNOSTIC ─────
+# ───── SECTION DIAGNOSTIC ─────
 
-with tab_diag:
+with tabs[0]:
     st.markdown("#### Profils & indicateurs")
 
     # Profil relationnel
@@ -606,7 +824,7 @@ with tab_diag:
 
     st.markdown("")
 
-    # Autopsie dans ce même tab (mais repliée)
+    # Autopsie repliée
     highlights = analysis.get("highlights", []) or []
 
     with st.expander("🔎 Autopsie du texte (passages problématiques)"):
@@ -630,9 +848,9 @@ with tab_diag:
                     )
                 st.markdown("</div>", unsafe_allow_html=True)
 
-# ───── TAB SYSTÉMIQUE ─────
+# ───── SECTION SYSTÉMIQUE ─────
 
-with tab_systemic:
+with tabs[1]:
     st.markdown("#### Mise en perspective systémique")
 
     st.markdown("<div class='sub-card' style='margin-bottom:0.8rem;'>", unsafe_allow_html=True)
@@ -642,17 +860,24 @@ with tab_systemic:
     macro_implications = systemic.get("macro_implications", []) or []
 
     st.markdown(f"- **Échelle principale** : {scale}")
-    st.markdown(f"- **Dynamiques de pouvoir** : {power_dyn}")
-    st.markdown(f"- **Cadrage narratif** : {narrative_frame}")
+    st.markdown("")
+    st.markdown("**Rapports de force & intérêts en jeu**")
+    st.markdown(power_dyn)
+
+    st.markdown("")
+    st.markdown("**Comment le message cadre le problème**")
+    st.markdown(narrative_frame)
+
     if macro_implications:
-        st.markdown("**Implications possibles à moyen / long terme :**")
+        st.markdown("")
+        st.markdown("**Effets possibles à moyen / long terme**")
         for mi in macro_implications:
             st.markdown(f"- {mi}")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ───── TAB FACT-CHECK ─────
+# ───── SECTION FACT-CHECK ─────
 
-with tab_fact:
+with tabs[2]:
     st.markdown("#### Analyse factuelle (quand applicable)")
     fact_checks = analysis.get("fact_checks", []) or []
 
@@ -681,16 +906,15 @@ with tab_fact:
             "ou le texte ne s'y prêtait pas clairement."
         )
 
-# ───── TAB ACTIONS ─────
+# ───── SECTION ACTIONS ─────
 
-with tab_actions:
+with tabs[3]:
     st.markdown("#### Actions recommandées")
     actions = analysis.get("recommended_actions", []) or []
 
     if not actions:
         st.caption("Aucune action particulière n'a été recommandée.")
     else:
-        # tri par priorité si présent
         actions_sorted = sorted(
             actions,
             key=lambda a: a.get("priority", 3)
@@ -706,9 +930,9 @@ with tab_actions:
                 st.markdown(detail)
             st.markdown("</div>", unsafe_allow_html=True)
 
-# ───── TAB RÉPONSE (APRÈS ANALYSE) ─────
+# ───── SECTION RÉPONSE ─────
 
-with tab_reply:
+with tabs[4]:
     if content_type != "interaction":
         st.caption(
             "Ce texte n'est pas identifié comme un message adressé directement "
@@ -739,16 +963,22 @@ with tab_reply:
         tone_pref = st.session_state["tone_pref"]
         emoji_allowed = st.session_state["emoji_allowed"]
 
+        # On utilise le texte effectivement analysé :
+        if input_mode == "URL":
+            original_for_reply = "(Texte issu d'un article ou discours, réponse directe rarement pertinente.)"
+        else:
+            original_for_reply = st.session_state.get("input_text", "")
+
         if st.button("🛡️ Générer une réponse suggérée", use_container_width=True):
             with st.spinner("Génération de la réponse…"):
                 replies = generate_replies_with_llm(
-                    original_text=input_text,
+                    original_text=original_for_reply,
                     analysis=analysis,
                     tone_pref=tone_pref,
                     emoji_allowed=emoji_allowed,
                 )
             st.session_state["replies"] = replies
-            st.toast("Réponse générée ✅", icon="✅")
+            st.toast("Réponse générée ✅ (utilise le bouton pour la copier)", icon="✅")
 
         replies = st.session_state["replies"]
 
@@ -757,17 +987,20 @@ with tab_reply:
 
             with tabs_reply[0]:
                 if replies.get("calm"):
-                    st.code(replies["calm"], language="text")
+                    render_reply_block("Réponse calme", replies["calm"])
                 else:
                     st.caption("Aucune réponse calme disponible pour l'instant.")
 
             with tabs_reply[1]:
                 if replies.get("assertive"):
-                    st.code(replies["assertive"], language="text")
+                    render_reply_block("Réponse assertive", replies["assertive"])
                 else:
                     st.caption("Aucune réponse assertive disponible pour l'instant.")
         else:
-            st.caption("Aucune réponse générée pour l'instant. Lance la génération ci-dessus.")
+            st.caption(
+                "Aucune réponse générée pour l'instant. "
+                "Choisis le ton, puis clique sur « Générer une réponse suggérée »."
+            )
 
 # ───────────────── SHARE CARD ─────────────────
 
