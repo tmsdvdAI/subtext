@@ -130,6 +130,21 @@ st.markdown(
         padding-bottom: 0.4rem !important;
     }
 
+    /* 🔧 FIX iOS : forcer le dark sur l’expander ouvert */
+    [data-testid="stExpander"] > details,
+    [data-testid="stExpander"] > details > summary {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+    }
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] summary span {
+        color: #e5e7eb !important;
+    }
+    [data-testid="stExpander"] div[role="region"] {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+    }
+
     /* Petit chip de statut sous les boutons (analyse en cours / terminée) */
     .subtext-status-chip {
         margin-top: 0.45rem;
@@ -166,8 +181,8 @@ st.markdown(
         color: #e5e7eb !important;
     }
 
-    /* Liste déroulante */
-    .stSelectbox [role="listbox"],
+    /* Liste déroulante (popover) */
+    .stSelectbox div[role="listbox"],
     div[role="listbox"] {
         background-color: #020617 !important;
         color: #e5e7eb !important;
@@ -176,14 +191,17 @@ st.markdown(
     }
 
     /* Options */
-    .stSelectbox [role="option"] {
+    .stSelectbox div[role="option"],
+    div[role="option"] {
         background-color: #020617 !important;
         color: #e5e7eb !important;
     }
 
     /* Option survolée / sélectionnée */
-    .stSelectbox [role="option"][aria-selected="true"],
-    .stSelectbox [role="option"]:hover {
+    .stSelectbox div[role="option"][aria-selected="true"],
+    .stSelectbox div[role="option"]:hover,
+    div[role="option"][aria-selected="true"],
+    div[role="option"]:hover {
         background-color: #0f172a !important;
         color: #f9fafb !important;
     }
@@ -191,6 +209,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 
 
 # ───────────────── HELPERS ─────────────────
