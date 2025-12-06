@@ -256,10 +256,29 @@ Style :
 
 if "analysis_data" not in st.session_state:
     st.session_state["analysis_data"] = None
+
 if "source_text" not in st.session_state:
     st.session_state["source_text"] = ""
+
 if "word_count" not in st.session_state:
     st.session_state["word_count"] = 0
+
+if "reply_text" not in st.session_state:
+    st.session_state["reply_text"] = ""
+
+def reset_all():
+    # Réinitialise tous les états utiles
+    if "analysis_data" in st.session_state:
+        st.session_state["analysis_data"] = None
+    if "source_text" in st.session_state:
+        st.session_state["source_text"] = ""
+    if "word_count" in st.session_state:
+        st.session_state["word_count"] = 0
+    if "reply_text" in st.session_state:
+        st.session_state["reply_text"] = ""
+    if "input_text" in st.session_state:
+        st.session_state["input_text"] = ""
+
 
 
 # ───────────────── UI PRINCIPALE ─────────────────
@@ -308,14 +327,8 @@ with col_analyze:
     analyze_button = st.button("Analyser ce texte")
 
 with col_clear:
-    clear_button = st.button("Effacer")
+    st.button("Effacer", on_click=reset_all)
 
-# Si on clique sur "Effacer", on vide le texte + l'analyse
-if "clear_button" in locals() and clear_button:
-    st.session_state["input_text"] = ""
-    st.session_state["analysis_data"] = None
-    st.session_state["source_text"] = ""
-    st.session_state["word_count"] = 0
 
 
 
@@ -378,6 +391,123 @@ source_text = st.session_state.get("source_text", "")
 word_count = st.session_state.get("word_count", 0)
 
 if data:
+    # ───────── CSS Dark mode & cards + scroll top ─────────
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #020617;
+        }
+        .subtext-verdict-card {
+            border-radius: 18px;
+            padding: 1.4rem 1.8rem;
+            background: radial-gradient(circle at top left, #0f172a, #020617 55%);
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            box-shadow: 0 20px 45px rgba(0,0,0,0.7);
+            color: #e5e7eb;
+            margin-bottom: 0.75rem;
+        }
+        .subtext-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.75rem;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.18);
+            color: #5eead4;
+            border: 1px solid rgba(45, 212, 191, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .subtext-intention {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-top: 0.35rem;
+        }
+        .subtext-summary {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-top: 0.85rem;
+            margin-bottom: 0.75rem;
+            color: #e5e7eb;
+        }
+        .subtext-score-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .subtext-score-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9ca3af;
+        }
+        .subtext-score-pill {
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 0.25rem 0.7rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .subtext-score-pill.good {
+            background: rgba(22, 163, 74, 0.16);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.55);
+        }
+        .subtext-score-pill.warn {
+            background: rgba(234, 179, 8, 0.16);
+            color: #facc15;
+            border: 1px solid rgba(250, 204, 21, 0.55);
+        }
+        .subtext-score-pill.bad {
+            background: rgba(239, 68, 68, 0.16);
+            color: #fca5a5;
+            border: 1px solid rgba(248, 113, 113, 0.55);
+        }
+        .subtext-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.15rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            background: rgba(15,23,42,0.85);
+            border: 1px solid rgba(75,85,99,0.9);
+            color: #9ca3af;
+        }
+        .subtext-card {
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            background: #020617;
+            border: 1px solid rgba(51, 65, 85, 0.95);
+            box-shadow: 0 14px 34px rgba(0,0,0,0.7);
+        }
+        .subtext-card h4 {
+            margin: 0 0 0.45rem 0;
+            font-size: 0.95rem;
+            color: #e5e7eb;
+        }
+        .subtext-card p {
+            margin: 0;
+            font-size: 0.86rem;
+            color: #9ca3af;
+        }
+        .subtext-tab-container > div {
+            padding-top: 0.6rem;
+        }
+        </style>
+        <script>
+        window.scrollTo(0, 0);
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
     meta = data.get("meta", {})
     summary = data.get("summary", {})
     scores = data.get("scores", {})
@@ -391,67 +521,115 @@ if data:
     cog_risk = data.get("cognitive_risk", {})
     overall_conf = data.get("confidence", 0)
 
-    # ───────── VUE D’ENSEMBLE ─────────
-    st.subheader("Vue d’ensemble")
-
-    col_meta1, col_meta2 = st.columns([2, 1])
-
     detected_type = meta.get("detected_type", "other") or "other"
+    type_conf = int(meta.get("type_confidence", 0) or 0)
     intention = meta.get("intention", "").strip() or "Non précisé"
+    neutral_summary = summary.get("neutral", "")
 
-    with col_meta1:
-        st.markdown(f"**Type détecté :** `{detected_type}`")
-        st.markdown(f"**Intention apparente :** {intention}")
-        st.markdown(f"**Résumé neutre :** {summary.get('neutral', '')}")
+    risk_score = int(cog_risk.get("score", 0) or 0)
 
-        # Cas article / news / discours politique
+    # Classe de couleur pour le risque global
+    if risk_score >= 70:
+        risk_class = "bad"
+    elif risk_score >= 40:
+        risk_class = "warn"
+    else:
+        risk_class = "good"
+
+    # ───────── En-tête : Verdict + Réponse + Reset ─────────
+    st.markdown("### 🔎 Verdict d’analyse")
+
+    top_left, top_right = st.columns([3, 2])
+
+    with top_left:
+        st.markdown(
+            f"""
+            <div class="subtext-verdict-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                    <div class="subtext-badge">
+                        {detected_type} · {type_conf}/100
+                    </div>
+                    <div class="subtext-chip">
+                        {word_count} mots analysés
+                    </div>
+                </div>
+                <div class="subtext-intention">
+                    Intention apparente : <strong>{intention}</strong>
+                </div>
+                <div class="subtext-summary">
+                    {neutral_summary}
+                </div>
+                <div class="subtext-score-row">
+                    <div>
+                        <div class="subtext-score-label">Risque cognitif global</div>
+                        <div style="font-size:0.8rem; color:#9ca3af; margin-top:0.2rem;">
+                            Confiance de l’analyse : {overall_conf}/100
+                        </div>
+                    </div>
+                    <div>
+                        <span class="subtext-score-pill {risk_class}">
+                            {risk_score}/100
+                        </span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Infos crédibilité / biais politique si pertinent
         if detected_type in ["article", "blog", "news", "political_speech"]:
             cred_score = int(credibility.get("score", 0) or 0)
             cred_justif = credibility.get("justification", "")
             art_bias = politics.get("article_bias", "")
             art_bias_score = int(politics.get("article_bias_score", 0) or 0)
 
-            st.markdown("**Crédibilité de la source :**")
-            render_score("Crédibilité perçue", cred_score)
-            if cred_justif:
-                st.caption(cred_justif)
+            with st.container():
+                st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+                st.markdown("**Crédibilité & biais politique**")
+                st.markdown(f"- Crédibilité perçue : **{cred_score}/100**")
+                if cred_justif:
+                    st.markdown(f"<span style='font-size:0.85rem;color:#9ca3af;'>{cred_justif}</span>", unsafe_allow_html=True)
+                if art_bias:
+                    st.markdown(
+                        f"- Bord politique du texte : **{art_bias}** ({art_bias_score}/100)"
+                    )
+                st.markdown('</div>', unsafe_allow_html=True)
 
-            if art_bias:
-                st.markdown(
-                    f"**Bord politique du texte :** {art_bias} ({art_bias_score}/100)"
-                )
-
-        # Cas forum / réseaux
         if detected_type in ["forum_post", "social_post", "comment"]:
             auth_bias = politics.get("author_bias", "")
             auth_bias_score = int(politics.get("author_bias_score", 0) or 0)
             if auth_bias:
                 st.markdown(
-                    f"**Orientation probable de l'auteur :** {auth_bias} ({auth_bias_score}/100)"
+                    f"<div class='subtext-card' style='margin-top:0.6rem;'><strong>Orientation probable de l'auteur :</strong> {auth_bias} ({auth_bias_score}/100)</div>",
+                    unsafe_allow_html=True,
                 )
 
-    with col_meta2:
-        st.markdown("**Risque cognitif global**")
-        risk_score = int(cog_risk.get("score", 0) or 0)
-        render_score("Risque cognitif", risk_score)
-        st.caption(
-            "Facteurs principaux : "
-            + (", ".join(cog_risk.get("factors", [])) or "Non précisés")
-        )
-        st.caption(f"Confiance globale de l’analyse : {overall_conf}/100")
+       # ───────── Bloc réponse à droite ─────────
+    with top_right:
+        st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+        st.markdown("#### 💬 Réponse suggérée")
 
-    st.write("---")
-
-        # ───────── PROPOSITION DE RÉPONSE (juste après la vue d’ensemble) ─────────
-    st.subheader("💬 Générer une réponse à ce message ?")
-
-    reply_button = st.button("Proposer une réponse", key="reply_after_analysis")
-
-    if reply_button:
         if is_conversational_type(detected_type):
-            with st.spinner("Rédaction de la réponse..."):
-                try:
-                    reply_system_prompt = f"""
+            gen_col, reset_col = st.columns([1, 1])
+
+            # Bouton pour générer la réponse
+            with gen_col:
+                gen_reply = st.button("Générer une réponse", key="reply_after_analysis")
+
+            # Bouton reset complet (input + analyse + réponse)
+            with reset_col:
+                st.button(
+                    "🔁 Reset complet",
+                    key="reset_after",
+                    on_click=reset_all,
+                )
+
+            # Génération de la réponse si demandé
+            if gen_reply:
+                with st.spinner("Rédaction de la réponse..."):
+                    try:
+                        reply_system_prompt = f"""
 Tu écris une réponse courte au texte donné.
 Règles :
 - Même langue que le texte d'origine.
@@ -462,76 +640,120 @@ Règles :
 - Ne reformule pas le texte d'origine, réponds réellement.
 """
 
-                    reply_user_content = (
-                        "Texte d'origine :\n"
-                        "----------------\n"
-                        f"{source_text}\n\n"
-                        "Contexte d'analyse (résumé neutre) :\n"
-                        f"{summary.get('neutral', '')}\n\n"
-                        "Intention apparente :\n"
-                        f"{meta.get('intention', '')}\n"
-                    )
+                        reply_user_content = (
+                            "Texte d'origine :\n"
+                            "----------------\n"
+                            f"{source_text}\n\n"
+                            "Contexte d'analyse (résumé neutre) :\n"
+                            f"{neutral_summary}\n\n"
+                            "Intention apparente :\n"
+                            f"{intention}\n"
+                        )
 
-                    reply_resp = client.chat.completions.create(
-                        model="gpt-5.1",
-                        messages=[
-                            {"role": "system", "content": reply_system_prompt},
-                            {"role": "user", "content": reply_user_content},
-                        ],
-                    )
+                        reply_resp = client.chat.completions.create(
+                            model="gpt-5.1",
+                            messages=[
+                                {"role": "system", "content": reply_system_prompt},
+                                {"role": "user", "content": reply_user_content},
+                            ],
+                        )
 
-                    reply_text = reply_resp.choices[0].message.content.strip()
+                        st.session_state["reply_text"] = reply_resp.choices[0].message.content.strip()
 
-                    st.success("✅ Réponse générée ci-dessous 👇")
-                    st.markdown("**Réponse suggérée :**")
-                    st.write(reply_text)
+                    except Exception as e:
+                        st.error(f"Erreur lors de la génération de la réponse : {e}")
 
-                except Exception as e:
-                    st.error(f"Erreur lors de la génération de la réponse : {e}")
+            # Zone de texte éditable avec la réponse
+            reply_text = st.session_state.get("reply_text", "")
+            if reply_text:
+                st.text_area(
+                    "Texte à copier / ajuster",
+                    value=reply_text,
+                    height=180,
+                    label_visibility="collapsed",
+                )
+                st.caption("✂️ Tu peux éditer puis copier-coller manuellement.")
+            else:
+                st.caption("Clique sur « Générer une réponse » pour proposer une formulation.")
         else:
-            st.info(
-                "Ce contenu n’a pas été identifié comme conversationnel "
-                "(mail / DM / forum). Réponse automatique désactivée."
+            st.caption(
+                "Ce contenu n’a pas été détecté comme message conversationnel. "
+                "Génération de réponse désactivée."
             )
 
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
-    # ───────── SCORES DÉTAILLÉS ─────────
-    st.subheader("Scores cognitifs")
+    # ───────── TABS PRINCIPAUX ─────────
+    tab_scores, tab_rhet, tab_fact, tab_system, tab_json = st.tabs(
+        ["📊 Scores & actions", "🎭 Rhétorique", "🧪 Fact-check", "🕸 Système", "🛠 Debug JSON"]
+    )
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-
+    # Préparation des scores
     noise = int(scores.get("noise", 0) or 0)
     manip = int(scores.get("manipulation", 0) or 0)
     host = int(scores.get("hostility", 0) or 0)
     emo = int(scores.get("emotional_intensity", 0) or 0)
     info_val = int(scores.get("informational_value", 0) or 0)
 
-    with col1:
-        render_score("Bruit", noise)
-    with col2:
-        render_score("Manipulation", manip)
-    with col3:
-        render_score("Hostilité", host)
-    with col4:
-        render_score("Émotion", emo)
-    with col5:
-        render_score("Valeur info", info_val)
+    # ───── TAB SCORES & ACTIONS ─────
+    with tab_scores:
+        st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
+        col_left, col_right = st.columns(2)
 
-    with st.expander("Voir les justifications des scores"):
-        just = scores.get("justifications", {})
-        st.markdown(f"**Bruit :** {just.get('noise', '')}")
-        st.markdown(f"**Manipulation :** {just.get('manipulation', '')}")
-        st.markdown(f"**Hostilité :** {just.get('hostility', '')}")
-        st.markdown(
-            f"**Intensité émotionnelle :** {just.get('emotional_intensity', '')}"
-        )
-        st.markdown(
-            f"**Valeur informationnelle :** {just.get('informational_value', '')}"
-        )
+        with col_left:
+            st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+            st.markdown("#### Profil cognitif")
+            row1_col1, row1_col2 = st.columns(2)
+            row2_col1, row2_col2 = st.columns(2)
 
-    # ───────── TECHNIQUES ─────────
-    with st.expander("Techniques rhétoriques détectées"):
+            with row1_col1:
+                render_score("Manipulation", manip)
+            with row1_col2:
+                render_score("Intensité émotionnelle", emo)
+            with row2_col1:
+                render_score("Bruit", noise)
+            with row2_col2:
+                render_score("Valeur informationnelle", info_val)
+
+            with st.expander("Voir les justifications des scores"):
+                just = scores.get("justifications", {})
+                st.markdown(f"**Bruit :** {just.get('noise', '')}")
+                st.markdown(f"**Manipulation :** {just.get('manipulation', '')}")
+                st.markdown(f"**Hostilité :** {just.get('hostility', '')}")
+                st.markdown(
+                    f"**Intensité émotionnelle :** {just.get('emotional_intensity', '')}"
+                )
+                st.markdown(
+                    f"**Valeur informationnelle :** {just.get('informational_value', '')}"
+                )
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with col_right:
+            st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+            st.markdown("#### Actions recommandées")
+            sugg = actions.get("suggested", []) or []
+            none_needed = actions.get("none_needed", False)
+
+            if none_needed and not sugg:
+                st.write("✅ Aucune action particulière n’est nécessaire.")
+            else:
+                if sugg:
+                    for a in sugg:
+                        st.markdown(f"• {a}")
+                if none_needed:
+                    st.caption(
+                        "Le modèle estime qu’aucune action critique supplémentaire n’est indispensable."
+                    )
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ───── TAB RHÉTORIQUE ─────
+    with tab_rhet:
+        st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
+        st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+        st.markdown("#### 🎭 Techniques rhétoriques détectées")
         if not techniques:
             st.write("Aucune technique marquante détectée.")
         else:
@@ -539,9 +761,14 @@ Règles :
                 label = t.get("label", "")
                 excerpt = t.get("excerpt", "")
                 st.markdown(f"- **{label}** — « {excerpt} »")
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # ───────── CLAIMS ─────────
-    with st.expander("Claims factuels & pseudo fact-check (connaissances internes)"):
+    # ───── TAB FACT-CHECK ─────
+    with tab_fact:
+        st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
+        st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+        st.markdown("#### 🧪 Claims factuels & pseudo fact-check (connaissances internes)")
         if not claims:
             st.write("Aucun claim factuel explicite identifié.")
         else:
@@ -558,17 +785,16 @@ Règles :
                         st.markdown(f"  - {s}")
                 st.write("")
 
-                        # Si des claims existent, proposer une vérification web via ChatGPT
-          # Si des claims existent, proposer une vérification web via ChatGPT
         if claims:
             st.write("---")
             st.markdown("### 🔍 Vérifier ces affirmations sur Internet")
 
-            # Prompt court, sans coller tout le texte dans l’URL
-            factcheck_instructions = """
+            factcheck_prompt = f"""
 Tu es un assistant spécialisé en vérification factuelle avec accès à la recherche web (browsing).
 
-Quand je te collerai un texte :
+Ta tâche est de vérifier les affirmations factuelles contenues dans le texte ci-dessous en utilisant des sources fiables disponibles en ligne.
+
+INSTRUCTIONS :
 1. Identifie les principales affirmations factuelles.
 2. Pour chaque affirmation, fais une recherche web rapide.
 3. Pour chaque affirmation, retourne :
@@ -577,11 +803,19 @@ Quand je te collerai un texte :
    - Sources : 2 à 3 URL de sources fiables
    - Confiance : un score de 0 à 100
 
-Réponds dans un tableau Markdown.
-Ne commente pas le texte au-delà de la vérification factuelle.
+FORMAT DE SORTIE :
+
+### Fact-check web sourcé
+
+| Claim | Verdict | Sources | Confiance |
+|------|---------|---------|-----------|
+
+### Texte à vérifier :
+
+{source_text}
 """
 
-            query = urllib.parse.quote(factcheck_instructions)
+            query = urllib.parse.quote(factcheck_prompt)
             chatgpt_url = f"https://chat.openai.com/?q={query}"
 
             st.markdown(
@@ -589,31 +823,22 @@ Ne commente pas le texte au-delà de la vérification factuelle.
                 unsafe_allow_html=True,
             )
             st.caption(
-                "Après ouverture, colle simplement le texte à vérifier dans ChatGPT pour lancer le fact-check web sourcé."
+                "Clique pour ouvrir ChatGPT avec le texte déjà préparé pour un fact-check web sourcé."
             )
 
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # ───────── ACTIONS ─────────
-    st.subheader("Actions possibles")
-    sugg = actions.get("suggested", []) or []
-    none_needed = actions.get("none_needed", False)
+    # ───── TAB SYSTÈME ─────
+    with tab_system:
+        st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
+        st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+        st.markdown("#### 🕸 Analyse systémique")
 
-    if none_needed and not sugg:
-        st.write("✅ Aucune action particulière n’est nécessaire.")
-    else:
-        if sugg:
-            for a in sugg:
-                st.markdown(f"✓ {a}")
-        if none_needed:
-            st.caption(
-                "Le modèle estime qu’aucune action supplémentaire critique n’est nécessaire."
-            )
-
-    # ───────── ANALYSE SYSTÉMIQUE ─────────
-    with st.expander("Analyse systémique (optionnelle)"):
         pr = systemic.get("power_relation", "")
         mech = systemic.get("mechanism", "")
         hidden = systemic.get("hidden_interests", "")
+
         if not any([pr, mech, hidden]):
             st.write("Pas d’analyse systémique fournie pour ce texte.")
         else:
@@ -626,12 +851,23 @@ Ne commente pas le texte au-delà de la vérification factuelle.
 
             mermaid = (diagram or {}).get("mermaid", "").strip()
             if mermaid:
-                st.markdown("**Diagramme systémique (code Mermaid à copier) :**")
-                st.code(mermaid, language="mermaid")
+                with st.expander("Voir le code du diagramme (Mermaid)"):
+                    st.code(mermaid, language="mermaid")
+                st.caption(
+                    "Dans une prochaine version, ce schéma sera affiché graphiquement."
+                )
 
-    # ───────── JSON BRUT ─────────
-    with st.expander("Voir le JSON brut (debug)"):
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ───── TAB DEBUG JSON ─────
+    with tab_json:
+        st.markdown('<div class="subtext-tab-container">', unsafe_allow_html=True)
+        st.markdown('<div class="subtext-card">', unsafe_allow_html=True)
+        st.markdown("#### 🛠 JSON brut (debug)")
         st.json(data)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
    
