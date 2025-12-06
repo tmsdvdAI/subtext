@@ -24,7 +24,7 @@ st.set_page_config(
 
 client = OpenAI()
 
-# Modèle LLM principal (flagship)
+# Modèle LLM principal
 OPENAI_MAIN_MODEL = "gpt-5.1"
 
 # ───────────────── STYLES GLOBAUX (Dark / Mobile-first) ─────────────────
@@ -54,6 +54,7 @@ st.markdown(
         letter-spacing: 0.02em;
         color: #F9FAFB;
     }
+
     .hero-card {
         border-radius: 18px;
         padding: 1.2rem 1.3rem;
@@ -66,6 +67,7 @@ st.markdown(
         background: #111827;
         border: 1px solid #1F2937;
     }
+
     .tag-pill {
         display: inline-block;
         padding: 0.25rem 0.55rem;
@@ -109,6 +111,7 @@ st.markdown(
         font-size: 0.8rem;
         color: #9CA3AF;
     }
+
     textarea {
         font-size: 0.9rem !important;
         background-color: #020617 !important;
@@ -119,7 +122,21 @@ st.markdown(
         color: #F9FAFB !important;
     }
 
-    /* Tabs (sections) plus visibles, scrollables sur mobile */
+    /* Boutons lisibles sur mobile (pas de texte blanc sur blanc) */
+    .stButton>button {
+        background-color: #020617 !important;
+        color: #F9FAFB !important;
+        border-radius: 999px !important;
+        border: 1px solid #374151 !important;
+        padding: 0.55rem 0.8rem !important;
+        font-size: 0.9rem !important;
+    }
+    .stButton>button:hover {
+        border-color: #F97373 !important;
+        color: #F97373 !important;
+    }
+
+    /* Tabs (sections) scrollables sur mobile, avec soulignement rouge */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.25rem;
         scrollbar-width: thin;
@@ -137,21 +154,20 @@ st.markdown(
         font-weight: 600;
     }
 
-    /* Bloc de réponse + bouton copier (pas de scroll horizontal) */
+    /* Bloc de réponse sans scroll interne + bouton copier */
     .reply-block {
         margin-top: 0.6rem;
     }
-    .reply-text {
+    .reply-box {
         width: 100%;
-        min-height: 90px;
         background-color: #020617;
         color: #F9FAFB;
         border-radius: 12px;
         border: 1px solid #374151;
         padding: 0.75rem;
-        resize: vertical;
         white-space: pre-wrap;
         overflow-wrap: break-word;
+        font-size: 0.9rem;
     }
     .copy-btn {
         margin-top: 0.5rem;
@@ -233,17 +249,15 @@ def fetch_url_text(url: str) -> Tuple[Optional[str], Optional[str]]:
 
     html = resp.text
 
-    # Protection Cloudflare / JS / pages vides
     if "cf-browser-verification" in html.lower() or "cf-challenge" in html.lower():
         return (
             None,
             "Cette page semble protégée (Cloudflare / JavaScript). "
             "Je ne peux pas extraire automatiquement le contenu. "
-            "Copie-colle le texte dans l'onglet « Texte ». ",
+            "Copie-colle le texte dans l'onglet « Texte ».",
         )
 
     if BeautifulSoup is None:
-        # Fallback très simple si bs4 pas installée
         return (
             None,
             "Je peux accéder à la page, mais je ne dispose pas de l'outil pour extraire proprement le texte. "
@@ -251,8 +265,6 @@ def fetch_url_text(url: str) -> Tuple[Optional[str], Optional[str]]:
         )
 
     soup = BeautifulSoup(html, "html.parser")
-
-    # Naïf : on concatène les paragraphes
     paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
     text = "\n\n".join(p for p in paragraphs if p)
 
@@ -260,7 +272,7 @@ def fetch_url_text(url: str) -> Tuple[Optional[str], Optional[str]]:
         return (
             None,
             "Je n'ai pas réussi à trouver du texte exploitable sur cette page. "
-            "Copie-colle le contenu à analyser dans l'onglet « Texte ». ",
+            "Copie-colle le contenu à analyser dans l'onglet « Texte ».",
         )
 
     return text, None
@@ -360,7 +372,11 @@ Produire une ANALYSE STRUCTURÉE, JSON UNIQUEMENT, qui aide l'utilisateur à :
       "detail": "explication courte adaptée au contexte du texte",
       "priority": 1
     }
-  ]
+  ],
+
+  "plain_translation": "Traduction en langage courant : ce que la personne est en train de faire / dire au niveau relationnel, en 1–3 phrases simples.",
+
+  "reaction_validation": "1–3 phrases expliquant si la réaction de la personne qui reçoit le message est compréhensible, logique, ou si le texte est plutôt neutre."
 }
 
 ──────────────── RÈGLES D'INTERPRÉTATION ────────────────
@@ -386,7 +402,7 @@ Produire une ANALYSE STRUCTURÉE, JSON UNIQUEMENT, qui aide l'utilisateur à :
 - Si tu n'es pas sûr : verdict = "incertain" et "sources": [].
 
 4) Systemic view :
-- Tu expliques les choses pour un public non spécialiste, avec un vocabulaire simple.
+- Tu expliques pour un public non spécialiste, avec un vocabulaire simple.
 - Tu relies le micro au macro : quels récits, quels rapports de force, quelle vision du monde ?
 - Tu restes sobre, analytique, pas militant.
 
@@ -454,6 +470,7 @@ Emojis :
 
 Contraintes :
 - 1–4 phrases max par réponse.
+- Chaque réponse doit tenir en environ 300 caractères maximum (pour rester lisible dans un petit encadré).
 - Pas de psychanalyse, pas de jugement global ("tu es toxique").
 - Pas de répétition inutile du contenu initial.
 - Tu n'expliques pas ta réponse, tu ne renvoies que le JSON ci-dessous.
@@ -466,6 +483,7 @@ Format JSON STRICT :
 }
 """
 
+    # Résumé d'analyse minimal
     summary_for_reply = {
         "global_score": analysis.get("global_score"),
         "global_label": analysis.get("global_label"),
@@ -499,6 +517,13 @@ Génère UNIQUEMENT un JSON avec deux champs :
             model=OPENAI_MAIN_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
+                {
+                    "role": "system",
+                    "content": (
+                        f"RÈGLE PRIORITAIRE : le ton demandé par l'utilisateur est « {tone_pref} ». "
+                        "Tu dois absolument respecter ce ton dans la forme, le vocabulaire et le niveau de politesse."
+                    ),
+                },
                 {"role": "user", "content": user_prompt},
             ],
             response_format={"type": "json_object"},
@@ -545,16 +570,16 @@ def reset_app():
 
 
 def render_reply_block(title: str, text: str):
-    """Bloc réponse + bouton copier (sans scroll horizontal)."""
+    """Bloc réponse sans scroll interne + bouton copier."""
     if not text:
         return
     escaped = html_lib.escape(text)
-    js_text = json.dumps(text)  # string JS sécurisé
+    js_text = json.dumps(text)  # string JS safe
     st.markdown(
         f"""
         <div class="reply-block sub-card">
           <div style="font-size:0.9rem;margin-bottom:0.4rem;">{title}</div>
-          <textarea class="reply-text" readonly>{escaped}</textarea>
+          <div class="reply-box">{escaped}</div>
           <button class="copy-btn" onclick='navigator.clipboard.writeText({js_text})'>
             📋 Copier la réponse
           </button>
@@ -718,6 +743,9 @@ pressure = analysis.get("pressure", {}) or {}
 profile = analysis.get("profile", {}) or {}
 systemic = analysis.get("systemic_view", {}) or {}
 
+plain_translation = (analysis.get("plain_translation") or "").strip()
+reaction_validation = (analysis.get("reaction_validation") or "").strip()
+
 st.markdown("<div class='hero-card'>", unsafe_allow_html=True)
 
 st.markdown("<div class='small-label'>Verdict global</div>", unsafe_allow_html=True)
@@ -771,6 +799,14 @@ if tags:
 
 st.markdown("</div>", unsafe_allow_html=True)  # fin hero-card
 
+# Bloc traduction en langage clair
+if plain_translation:
+    st.markdown("")
+    st.markdown("<div class='sub-card'>", unsafe_allow_html=True)
+    st.markdown("**🧠 Traduction en langage clair**", unsafe_allow_html=True)
+    st.markdown(plain_translation)
+    st.markdown("</div>", unsafe_allow_html=True)
+
 st.markdown("")
 
 # ───────────────── NAVIGATION PRINCIPALE (Tabs) ─────────────────
@@ -783,7 +819,6 @@ tabs = st.tabs(tab_labels)
 with tabs[0]:
     st.markdown("#### Profils & indicateurs")
 
-    # Profil relationnel
     st.markdown("<div class='sub-card' style='margin-bottom:0.8rem;'>", unsafe_allow_html=True)
     st.markdown("**Profil du message**", unsafe_allow_html=True)
     rel_type = profile.get("relation_type", "—")
@@ -797,7 +832,6 @@ with tabs[0]:
     st.markdown(f"- **Audience visée** : {target_audience}")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Barres hostilité / manipulation / pression
     with st.container():
         c1, c2, c3 = st.columns(3)
 
@@ -824,7 +858,12 @@ with tabs[0]:
 
     st.markdown("")
 
-    # Autopsie repliée
+    if reaction_validation:
+        st.markdown("<div class='sub-card'>", unsafe_allow_html=True)
+        st.markdown("**🎭 Est-ce que ta réaction est compréhensible ?**", unsafe_allow_html=True)
+        st.markdown(reaction_validation)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     highlights = analysis.get("highlights", []) or []
 
     with st.expander("🔎 Autopsie du texte (passages problématiques)"):
@@ -963,7 +1002,6 @@ with tabs[4]:
         tone_pref = st.session_state["tone_pref"]
         emoji_allowed = st.session_state["emoji_allowed"]
 
-        # On utilise le texte effectivement analysé :
         if input_mode == "URL":
             original_for_reply = "(Texte issu d'un article ou discours, réponse directe rarement pertinente.)"
         else:
