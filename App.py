@@ -151,6 +151,7 @@ def fetch_url_content(url: str, follow_forum: bool = False, max_pages: int = 3) 
     """
     Récupère le texte principal d'une page web.
     Si follow_forum=True et que l'URL contient 'page=', tente d'incrémenter le paramètre.
+    C'est volontairement simple : on ne gère pas les sites complexes, login, JS, etc.
     """
     texts: List[str] = []
 
@@ -190,6 +191,13 @@ def fetch_url_content(url: str, follow_forum: bool = False, max_pages: int = 3) 
 
 
 def is_conversational_type(detected_type: str) -> bool:
+    """Retourne True si le type ressemble à un message / conversation."""
+    if not detected_type:
+        return False
+
+    t = detected_type.lower()
+
+    # Cas "propres" (valeurs prévues dans le JSON)
     conversational_types = {
         "email",
         "dm",
@@ -200,11 +208,33 @@ def is_conversational_type(detected_type: str) -> bool:
         "social_post",
         "message",
     }
-    return detected_type.lower() in conversational_types
+    if t in conversational_types:
+        return True
+
+    # Cas plus "sales" : labels combinés ou custom du modèle
+    keywords = [
+        "mail",
+        "e-mail",
+        "dm",
+        "sms",
+        "message",
+        "messagerie",
+        "chat",
+        "whatsapp",
+        "imessage",
+        "signal",
+        "telegram",
+        "forum",
+        "commentaire",
+        "post",
+    ]
+
+    return any(k in t for k in keywords)
 
 
 def count_words(text: str) -> int:
     return len(re.findall(r"\w+", text))
+
 
 
 # ───────────────── PROMPT MOTEUR ─────────────────
