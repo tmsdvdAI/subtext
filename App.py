@@ -22,6 +22,67 @@ st.set_page_config(
     layout="centered",
 )
 
+# Global Dark Theme Override
+st.markdown(
+    """
+    <style>
+    /* Force Dark Background globally */
+    .stApp {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Text inputs */
+    textarea, input, .stTextInput > div > div > input {
+        background-color: #0f172a !important;
+        color: #e5e7eb !important;
+        border: 1px solid rgba(148, 163, 184, 0.4) !important;
+        border-radius: 8px !important;
+    }
+
+    /* Radios & labels */
+    .stRadio label {
+        color: #e5e7eb !important;
+    }
+
+    /* Buttons */
+    .stButton button {
+        background: #1e293b !important;
+        color: #e5e7eb !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(148, 163, 184, 0.55) !important;
+    }
+    .stButton button:hover {
+        background: #334155 !important;
+    }
+
+    /* Tabs */
+    .stTabs [role="tablist"] {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.35) !important;
+    }
+    .stTabs [role="tab"] {
+        color: #9ca3af !important;
+        background: transparent !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #f87171 !important; /* rouge clair */
+        border-bottom: 2px solid #f87171 !important;
+    }
+
+    /* Titles & headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #f1f5f9 !important;
+    }
+
+    /* Divider lines too dark otherwise */
+    hr {
+        border-color: rgba(148, 163, 184, 0.25) !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 # ───────────────── HELPERS ─────────────────
 
