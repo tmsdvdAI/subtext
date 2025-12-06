@@ -22,59 +22,79 @@ st.set_page_config(
     layout="centered",
 )
 
-# Global Dark Theme Override
 st.markdown(
     """
     <style>
-    /* Force Dark Background globally */
+    /* --- GLOBAL DARK THEME --- */
     .stApp {
         background-color: #020617 !important;
         color: #e5e7eb !important;
     }
 
-    /* Text inputs */
-    textarea, input, .stTextInput > div > div > input {
-        background-color: #0f172a !important;
+    /* Body text par défaut plus clair */
+    p, span, li, label {
         color: #e5e7eb !important;
-        border: 1px solid rgba(148, 163, 184, 0.4) !important;
-        border-radius: 8px !important;
+    }
+
+    /* Textarea + inputs */
+    textarea, input, .stTextInput > div > div > input {
+        background-color: #020617 !important;
+        color: #f9fafb !important;
+        border: 1px solid rgba(148, 163, 184, 0.65) !important;
+        border-radius: 10px !important;
     }
 
     /* Radios & labels */
     .stRadio label {
-        color: #e5e7eb !important;
+        color: #f9fafb !important;
+        font-size: 0.9rem !important;
     }
 
     /* Buttons */
     .stButton button {
-        background: #1e293b !important;
-        color: #e5e7eb !important;
-        border-radius: 10px !important;
-        border: 1px solid rgba(148, 163, 184, 0.55) !important;
+        background: #0f172a !important;
+        color: #f9fafb !important;
+        border-radius: 999px !important;
+        padding: 0.45rem 1.2rem !important;
+        border: 1px solid rgba(148, 163, 184, 0.8) !important;
+        font-size: 0.9rem !important;
     }
     .stButton button:hover {
-        background: #334155 !important;
+        background: #1e293b !important;
+        border-color: rgba(248, 250, 252, 0.9) !important;
     }
 
     /* Tabs */
     .stTabs [role="tablist"] {
-        border-bottom: 1px solid rgba(148, 163, 184, 0.35) !important;
-    }
-    .stTabs [role="tab"] {
-        color: #9ca3af !important;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.55) !important;
+        box-shadow: none !important;
         background: transparent !important;
     }
+    .stTabs [role="tab"] {
+        color: #e5e7eb !important;
+        background: transparent !important;
+        font-size: 0.9rem !important;
+        padding-bottom: 0.4rem !important;
+    }
     .stTabs [aria-selected="true"] {
-        color: #f87171 !important; /* rouge clair */
-        border-bottom: 2px solid #f87171 !important;
+        color: #fecaca !important;              /* texte plus clair */
+        border-bottom: 2px solid #fb7185 !important;
     }
 
-    /* Titles & headers */
+    /* Essaie de virer l'effet de "fade" à droite sur mobile */
+    @media (max-width: 480px) {
+        .stTabs [role="tablist"] {
+            box-shadow: none !important;
+            background-image: none !important;
+        }
+    }
+
+    /* Titres */
     h1, h2, h3, h4, h5, h6 {
-        color: #f1f5f9 !important;
+        color: #f9fafb !important;
     }
 
-    /* Divider lines too dark otherwise */
+    /* Divider lines */
     hr {
         border-color: rgba(148, 163, 184, 0.25) !important;
     }
@@ -82,6 +102,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 
 # ───────────────── HELPERS ─────────────────
@@ -482,16 +503,16 @@ if data:
             letter-spacing: 0.08em;
         }
         .subtext-intention {
-            font-size: 0.85rem;
-            color: #9ca3af;
-            margin-top: 0.35rem;
+    font-size: 0.9rem;
+    color: #d1d5db;
+    margin-top: 0.35rem;
         }
         .subtext-summary {
-            font-size: 1.05rem;
-            font-weight: 600;
-            margin-top: 0.85rem;
-            margin-bottom: 0.75rem;
-            color: #e5e7eb;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-top: 0.85rem;
+    margin-bottom: 0.75rem;
+    color: #f9fafb;
         }
         .subtext-score-row {
             display: flex;
@@ -554,10 +575,10 @@ if data:
             color: #e5e7eb;
         }
         .subtext-card p {
-            margin: 0;
-            font-size: 0.86rem;
-            color: #9ca3af;
-        }
+    margin: 0;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+}
         .subtext-tab-container > div {
             padding-top: 0.6rem;
         }
