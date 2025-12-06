@@ -234,18 +234,20 @@ st.markdown(
             background-color: #0f172a !important;
             color: #f9fafb !important;
         }
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
-
 # ───────────────── HELPERS ─────────────────
+
+DEBUG_SCRAPER = True  # passe à False si tu veux enlever les messages de debug
 
 
 def score_style(score: int) -> Tuple[str, str]:
-    """Retourne (emoji, label niveau) en fonction du score."""
+    """Retourne (emoji, label niveau) en fonction du score pour les gros compteurs."""
     if score <= 33:
         return "🟢", "Faible"
     elif score <= 66:
@@ -255,6 +257,7 @@ def score_style(score: int) -> Tuple[str, str]:
 
 
 def render_score(label: str, value: int):
+    """Affiche un gros compteur (pour l’onglet Scores & actions)."""
     icon, level = score_style(value)
     st.markdown(
         f"""
@@ -268,47 +271,185 @@ def render_score(label: str, value: int):
     )
 
 
+def score_pill_level(score: int) -> str:
+    """Retourne la classe CSS (good/warn/bad) pour les mini-pills de score."""
+    if score >= 70:
+        return "bad"   # rouge
+    elif score >= 40:
+        return "warn"  # orange
+    else:
+        return "good"  # vert
+
+
 def fetch_url_content(url: str, follow_forum: bool = False, max_pages: int = 3) -> str:
     """
-    Récupère le texte principal d'une page web.
-    Si follow_forum=True et que l'URL contient 'page=', tente d'incrémenter le paramètre.
-    C'est volontairement simple : on ne gère pas les sites complexes, login, JS, etc.
+    Récupère du texte brut depuis une page web.
+
+    - Essaie de parser même si le statut HTTP n'est pas 200 (403, 404 avec body, etc.).
+    - Ne contourne PAS Cloudflare, paywalls, ni le JS dynamique.
+    - Si le texte extrait est trop court (page technique, loader, "Just a moment...", "MSN"...),
+      on considère que ce n'est pas exploitable et on renvoie une chaîne vide.
     """
     texts: List[str] = []
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; SubtextBot/0.1; +https://example.com/bot)"
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     }
 
-    def get_single(url_single: str) -> Optional[str]:
+    def extract_text(html: str) -> Optional[str]:
+        soup = BeautifulSoup(html, "html.parser")
+
+        # 1️⃣ On enlève le bruit évident
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+
+        # 2️⃣ Heuristique article si présent
+        article_tag = soup.find("article")
+        if article_tag:
+            paragraphs = [p.get_text(" ", strip=True) for p in article_tag.find_all("p")]
+            text = "\n\n".join([p for p in paragraphs if p])
+            if text.strip():
+                return text
+
+        # 3️⃣ Plus gros bloc de texte dans main/body
+        main = soup.find("main") or soup.body or soup
+        candidates = main.find_all(["div", "section", "p"], recursive=True)
+
+        best_text = ""
+        best_len = 0
+        for c in candidates:
+            t = c.get_text(" ", strip=True)
+            if not t or len(t) < 500:  # évite les micro-blocs
+                continue
+            if len(t) > best_len:
+                best_len = len(t)
+                best_text = t
+
+        if best_text.strip():
+            return best_text
+
+        # 4️⃣ Fallback : tout le body
+        body = soup.body or soup
+        raw = body.get_text("\n", strip=True)
+        if raw.strip():
+            return raw
+
+        # 5️⃣ Dernier recours : <title> + meta description / og:description
+        title = ""
+        if soup.title and soup.title.string:
+            title = soup.title.string.strip()
+
+        desc = ""
+        desc_meta = soup.find("meta", attrs={"name": "description"})
+        if not desc_meta:
+            desc_meta = soup.find("meta", attrs={"property": "og:description"})
+        if desc_meta and desc_meta.get("content"):
+            desc = desc_meta["content"].strip()
+
+        combo = (title + "\n\n" + desc).strip()
+        return combo if combo else None
+
+    def looks_like_anti_bot_page(text: str) -> bool:
+        """Détecte les pages type Cloudflare / 'Just a moment...'."""
+        lower = text.lower()
+        patterns = [
+            "just a moment",
+            "cloudflare",
+            "attention requise",
+            "checking your browser before accessing",
+            "vérification que vous n'êtes pas un robot",
+        ]
+        return any(p in lower for p in patterns)
+
+    def get_page(url_single: str) -> Optional[str]:
         try:
-            resp = requests.get(url_single, headers=headers, timeout=10)
-            resp.raise_for_status()
-        except Exception:
+            resp = requests.get(url_single, headers=headers, timeout=12)
+        except Exception as e:
+            if DEBUG_SCRAPER:
+                st.warning(f"🌐 Erreur réseau en récupérant {url_single} : {e}")
             return None
-        soup = BeautifulSoup(resp.text, "html.parser")
-        body = soup.body
-        if not body:
+
+        if DEBUG_SCRAPER:
+            st.caption(f"🌐 Statut HTTP {resp.status_code} pour {url_single}")
+
+        if not resp.text:
+            if DEBUG_SCRAPER:
+                st.caption("⚠️ Réponse sans body exploitable.")
             return None
-        text = body.get_text(separator="\n", strip=True)
+
+        # 🔒 Détection Cloudflare / anti-bot
+        if looks_like_anti_bot_page(resp.text):
+            if DEBUG_SCRAPER:
+                st.warning(
+                    "⚠️ Cette page semble protégée (Cloudflare / anti-bot). "
+                    "SUBTEXT ne peut pas y accéder directement.\n\n"
+                    "👉 Ouvre la page dans ton navigateur puis **copie-colle le texte** "
+                    "dans l’onglet « Texte »."
+                )
+            return None
+
+        # 4xx / 5xx : on tente quand même d'extraire du texte, mais on prévient
+        if resp.status_code >= 400:
+            if DEBUG_SCRAPER:
+                st.warning(
+                    "⚠️ Le site a répondu avec un statut d'erreur "
+                    f"({resp.status_code}). Il peut bloquer les robots/scrapers. "
+                    "SUBTEXT essaie quand même d'extraire du texte si possible, "
+                    "mais il est possible que tu doives copier-coller le contenu."
+                )
+
+        text = extract_text(resp.text)
+        if not text:
+            if DEBUG_SCRAPER:
+                st.caption("⚠️ Aucun texte exploitable n'a pu être extrait.")
+            return None
+
+        # 🧹 Filtre : si le texte est beaucoup trop court, on considère que ce n'est pas exploitable
+        # (cas typiques : 'MSN', 'Just a moment...', bandeau cookies, etc.)
+        word_count = len(re.findall(r"\w+", text))
+        if word_count < 30:
+            if DEBUG_SCRAPER:
+                preview_short = text[:80].replace("\n", " ")
+                st.caption(
+                    f"⚠️ Texte extrait très court ({word_count} mots) : "
+                    f"« {preview_short} » …\n"
+                    "Probable page technique (loader, consentement cookies, anti-bot...)."
+                )
+            return None
+
+        if DEBUG_SCRAPER:
+            preview = text[:400].replace("\n", " ")
+            st.caption(
+                f"🧾 Aperçu texte extrait ({len(text)} caractères / ~{word_count} mots) : "
+                f"{preview} …"
+            )
+
         return text
 
-    base_text = get_single(url)
+    # Page principale
+    base_text = get_page(url)
     if base_text:
         texts.append(base_text)
 
-    if follow_forum and "page=" in url:
+    # Pages suivantes type forum ?page=1 → page=2,3...
+    if follow_forum and "page=" in url and base_text:
         match = re.search(r"(page=)(\d+)", url)
         if match:
             prefix, num_str = match.groups()
             start_page = int(num_str)
             for p in range(start_page + 1, start_page + max_pages):
                 new_url = re.sub(r"(page=)\d+", f"{prefix}{p}", url)
-                extra_text = get_single(new_url)
+                extra_text = get_page(new_url)
                 if extra_text:
                     texts.append(extra_text)
 
-    return "\n\n".join(texts)
+    full_text = "\n\n".join(texts).strip()
+    return full_text if full_text else ""
 
 
 def is_conversational_type(detected_type: str) -> bool:
@@ -543,7 +684,7 @@ st.write(
 
 mode_label = st.radio(
     "Source du contenu :",
-    ["Texte (disponible)", "URL (bientôt)"],
+    ["Texte", "URL (article / post public)"],
     horizontal=True,
 )
 
@@ -564,7 +705,7 @@ if input_mode == "Texte":
             if st.button("💢 Message agressif", key="ex_agressif"):
                 example_preset = (
                     "T'arrêtes pas de raconter n'importe quoi, t’es complètement ridicule. "
-                    "Personne ne te respecte ici, tu ferais mieux de quitter le forum."
+                    "Personne ne te respecte ici, tu ferais mieux de quitter Twitter."
                 )
 
         with example_col2:
@@ -595,13 +736,23 @@ if input_mode == "Texte":
         placeholder="Ex : mail, message, post, discours...",
         key="input_text",
     )
+
 else:
     st.info(
-        "🔗 Analyse par URL arrive bientôt.\n\n"
-        "Pour l’instant, colle simplement le texte de l’article ou du post à la main. "
-        "Cela garantit une analyse plus fiable et évite les bugs de parsing."
+        "🔗 Colle ici l’URL d’un article, d’un post public ou d’un topic de forum.\n\n"
+        "SUBTEXT va récupérer le texte principal de la page (pas les commentaires cachés, pas les éléments interactifs)."
     )
-    st.stop()
+
+    url = st.text_input(
+        "URL à analyser :",
+        placeholder="Ex : https://…",
+    )
+
+    follow_forum = st.checkbox(
+        "Inclure aussi les pages suivantes si c’est un topic de forum (page=2,3,4…)",
+        value=False,
+        help="Ne marche que si l’URL contient un paramètre du type page=1, page=2, etc.",
+    )
 
 col_analyze, col_clear = st.columns([3, 1])
 
@@ -619,6 +770,11 @@ if status_msg:
         unsafe_allow_html=True,
     )
 
+if input_mode == "URL":
+    st.caption(
+        "ℹ️ Si l’analyse échoue, copie-colle simplement le texte de l’article dans la zone de texte."
+    )
+
 
 # ───────────────── ANALYSE ─────────────────
 
@@ -634,12 +790,34 @@ if analyze_button:
             st.stop()
         with st.spinner("Récupération de la page..."):
             content = fetch_url_content(url.strip(), follow_forum=follow_forum)
+
         if not content:
-            st.error("Impossible de récupérer du texte depuis cette URL.")
+            st.error(
+                "Impossible de récupérer du texte depuis cette URL.\n\n"
+                "💡 Causes possibles :\n"
+                "- le site bloque les robots/scrapers (ex : erreur 403, Cloudflare, protection anti-bot),\n"
+                "- le contenu est chargé dynamiquement en JavaScript (SUBTEXT n’exécute pas le JS),\n"
+                "- la page est protégée par un paywall ou nécessite une connexion.\n\n"
+                "👉 Dans ces cas-là, ouvre la page dans ton navigateur puis **copie-colle le texte** "
+                "dans l’onglet « Texte » de SUBTEXT."
+            )
             st.stop()
+
         source_text = content
 
+    # Compte de mots + blocage si trop court
     word_count = count_words(source_text)
+    st.session_state["word_count"] = word_count
+
+    if word_count < 15:
+        st.warning(
+            "📏 Le texte est trop court pour une analyse pertinente.\n\n"
+            "SUBTEXT a besoin d’un minimum de contexte (environ 2 à 3 phrases complètes).\n"
+            "👉 Ajoute un peu de contenu ou colle le message dans son contexte."
+        )
+        st.session_state["analysis_status"] = ""
+        st.session_state["is_loading"] = False
+        st.stop()
 
     st.session_state["analysis_status"] = "Analyse en cours…"
     st.session_state["is_loading"] = True
@@ -659,16 +837,19 @@ if analyze_button:
             data = json.loads(raw)
 
         except json.JSONDecodeError:
-            st.error("Impossible de lire la réponse comme JSON. Voici la réponse brute :")
+            st.error("Impossible de lire la réponse du modèle comme JSON. Voici la réponse brute :")
             st.code(raw, language="json")
+            st.session_state["analysis_status"] = ""
+            st.session_state["is_loading"] = False
             st.stop()
         except Exception as e:
-            st.error(f"Erreur : {e}")
+            st.error(f"Erreur lors de l’appel au modèle : {e}")
+            st.session_state["analysis_status"] = ""
+            st.session_state["is_loading"] = False
             st.stop()
 
     st.session_state["analysis_data"] = data
     st.session_state["source_text"] = source_text
-    st.session_state["word_count"] = word_count
     st.session_state["analysis_status"] = (
         "Analyse terminée ✅ Fais défiler pour voir le verdict."
     )
@@ -856,6 +1037,43 @@ if data:
                         </span>
                     </div>
                 </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # ───────── Mini-résumé visuel des scores ─────────
+        mini_noise = int(scores.get("noise", 0) or 0)
+        mini_manip = int(scores.get("manipulation", 0) or 0)
+        mini_host = int(scores.get("hostility", 0) or 0)
+        mini_emo = int(scores.get("emotional_intensity", 0) or 0)
+
+        mini_noise_class = score_pill_level(mini_noise)
+        mini_manip_class = score_pill_level(mini_manip)
+        mini_host_class = score_pill_level(mini_host)
+        mini_emo_class = score_pill_level(mini_emo)
+
+        st.markdown(
+            f"""
+            <div style="
+                margin-top: 0.55rem;
+                margin-bottom: 0.35rem;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.4rem;
+            ">
+                <span class="subtext-score-pill {mini_manip_class}">
+                    🎯 Manipulation&nbsp; {mini_manip}/100
+                </span>
+                <span class="subtext-score-pill {mini_host_class}">
+                    💢 Hostilité&nbsp; {mini_host}/100
+                </span>
+                <span class="subtext-score-pill {mini_noise_class}">
+                    📡 Bruit&nbsp; {mini_noise}/100
+                </span>
+                <span class="subtext-score-pill {mini_emo_class}">
+                    💓 Intensité émotive&nbsp; {mini_emo}/100
+                </span>
             </div>
             """,
             unsafe_allow_html=True,
