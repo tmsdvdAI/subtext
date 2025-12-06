@@ -205,6 +205,35 @@ st.markdown(
         background-color: #0f172a !important;
         color: #f9fafb !important;
     }
+
+     /* 🩹 Patch iOS Safari : forcer le popover du select en dark */
+    @supports (-webkit-touch-callout: none) {
+        /* Conteneur du menu déroulant */
+        div[data-baseweb="popover"] {
+            background-color: #020617 !important;
+            color: #e5e7eb !important;
+        }
+
+        /* Zone listbox à l'intérieur */
+        div[data-baseweb="popover"] [role="listbox"] {
+            background-color: #020617 !important;
+            color: #e5e7eb !important;
+            border-radius: 10px !important;
+            border: 1px solid rgba(148, 163, 184, 0.9) !important;
+        }
+
+        /* Options du menu */
+        div[data-baseweb="popover"] [role="option"] {
+            background-color: #020617 !important;
+            color: #e5e7eb !important;
+        }
+
+        /* Option survolée / sélectionnée */
+        div[data-baseweb="popover"] [role="option"][aria-selected="true"],
+        div[data-baseweb="popover"] [role="option"]:hover {
+            background-color: #0f172a !important;
+            color: #f9fafb !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
