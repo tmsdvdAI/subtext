@@ -115,24 +115,60 @@ st.markdown(
         border: 1px solid rgba(15, 23, 42, 0.0) !important;
     }
 
-    /* --- SELECTBOX : lisibilité en dark mode --- */
+    /* === EXPANDER : bloc d'exemples === */
+    .streamlit-expanderHeader {
+        background: #020617 !important;
+        color: #e5e7eb !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(75, 85, 99, 0.95) !important;
+        font-size: 0.9rem !important;
+        padding: 0.4rem 0.9rem !important;
+    }
+    .streamlit-expanderContent {
+        background: #020617 !important;
+        padding-top: 0.4rem !important;
+        padding-bottom: 0.4rem !important;
+    }
 
-    /* Boîte fermée */
-    .stSelectbox > div > div {
+    /* Petit chip de statut sous les boutons (analyse en cours / terminée) */
+    .subtext-status-chip {
+        margin-top: 0.45rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.18rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(75, 85, 99, 0.9);
+        color: #e5e7eb;
+    }
+
+    /* --- SELECTBOX : lisibilité en dark mode (desktop + mobile) --- */
+
+    /* Label */
+    .stSelectbox label {
+        color: #e5e7eb !important;
+    }
+
+    /* Boîte fermée (select) */
+    .stSelectbox > div > div,
+    div[data-baseweb="select"] > div {
         background-color: #020617 !important;
         color: #f9fafb !important;
         border-radius: 10px !important;
-        border: 1px solid rgba(148, 163, 184, 0.75) !important;
+        border: 1px solid rgba(148, 163, 184, 0.8) !important;
     }
 
-    /* Label + texte interne */
-    .stSelectbox label,
-    .stSelectbox div[data-baseweb="select"] span {
+    /* Texte interne */
+    .stSelectbox div[data-baseweb="select"] span,
+    div[data-baseweb="select"] span {
         color: #e5e7eb !important;
     }
 
     /* Liste déroulante */
-    .stSelectbox [role="listbox"] {
+    .stSelectbox [role="listbox"],
+    div[role="listbox"] {
         background-color: #020617 !important;
         color: #e5e7eb !important;
         border-radius: 10px !important;
@@ -425,6 +461,12 @@ if "word_count" not in st.session_state:
 if "reply_text" not in st.session_state:
     st.session_state["reply_text"] = ""
 
+if "analysis_status" not in st.session_state:
+    st.session_state["analysis_status"] = ""
+
+if "is_loading" not in st.session_state:
+    st.session_state["is_loading"] = False
+
 
 def reset_all():
     """Réinitialise tous les états utiles (appelé AVANT rendu via on_click)."""
@@ -438,14 +480,8 @@ def reset_all():
         st.session_state["reply_text"] = ""
     if "input_text" in st.session_state:
         st.session_state["input_text"] = ""
-
-
-def load_example(text: str):
-    """Charge un exemple dans la zone de texte et reset l'analyse."""
-    st.session_state["input_text"] = text
-    st.session_state["analysis_data"] = None
-    st.session_state["reply_text"] = ""
-    st.session_state["word_count"] = 0
+    st.session_state["analysis_status"] = ""
+    st.session_state["is_loading"] = False
 
 
 # ───────────────── UI PRINCIPALE ─────────────────
@@ -470,6 +506,41 @@ url = ""
 follow_forum = False
 
 if input_mode == "Texte":
+    # ───────── EXEMPLES RAPIDES (dans un expander au-dessus) ─────────
+    example_preset: Optional[str] = None
+
+    with st.expander("Besoin d’un exemple ? Clique pour en charger un :"):
+        example_col1, example_col2, example_col3 = st.columns(3)
+
+        with example_col1:
+            if st.button("💢 Message agressif", key="ex_agressif"):
+                example_preset = (
+                    "T'arrêtes pas de raconter n'importe quoi, t’es complètement ridicule. "
+                    "Personne ne te respecte ici, tu ferais mieux de quitter le forum."
+                )
+
+        with example_col2:
+            if st.button("🕴️ Manipulation (mail)", key="ex_mail"):
+                example_preset = (
+                    "Bonjour, j’espère que tu vas bien. Il faudrait vraiment que tu m’aides "
+                    "sur ce dossier aujourd’hui, sinon on risque tous de paraître incompétents. "
+                    "Tu ne veux pas que ça arrive, n’est-ce pas ?"
+                )
+
+        with example_col3:
+            if st.button("🎭 Propagande politique", key="ex_politique"):
+                example_preset = (
+                    "Notre pays est détruit par les mêmes élites depuis 30 ans. "
+                    "Il est temps de reprendre le contrôle, d’abolir leurs privilèges "
+                    "et de les faire payer pour leurs crimes."
+                )
+
+    if example_preset is not None:
+        st.session_state["input_text"] = example_preset
+        st.session_state["analysis_data"] = None
+        st.session_state["reply_text"] = ""
+        st.session_state["word_count"] = 0
+
     raw_text = st.text_area(
         "Colle ton texte ici :",
         height=220,
@@ -492,48 +563,14 @@ with col_analyze:
 with col_clear:
     st.button("Effacer", on_click=reset_all)
 
-# ───────── EXEMPLES RAPIDES (en dessous) ─────────
-if input_mode == "Texte":
-    with st.expander("Besoin d’un exemple ? Clique pour en charger un :"):
-        example_col1, example_col2, example_col3 = st.columns(3)
+# Petit statut visible sous les boutons (mobile friendly)
+status_msg = st.session_state.get("analysis_status", "")
+if status_msg:
+    st.markdown(
+        f"<div class='subtext-status-chip'>🧠 {status_msg}</div>",
+        unsafe_allow_html=True,
+    )
 
-        with example_col1:
-            st.button(
-                "💢 Message agressif",
-                on_click=load_example,
-                kwargs={
-                    "text": (
-                        "T'arrêtes pas de raconter n'importe quoi, t’es complètement ridicule. "
-                        "Personne ne te respecte ici, tu ferais mieux de quitter le forum."
-                    )
-                },
-            )
-
-        with example_col2:
-            st.button(
-                "🕴️ Manipulation (mail)",
-                on_click=load_example,
-                kwargs={
-                    "text": (
-                        "Bonjour, j’espère que tu vas bien. Il faudrait vraiment que tu m’aides "
-                        "sur ce dossier aujourd’hui, sinon on risque tous de paraître incompétents. "
-                        "Tu ne veux pas que ça arrive, n’est-ce pas ?"
-                    )
-                },
-            )
-
-        with example_col3:
-            st.button(
-                "🎭 Propagande politique",
-                on_click=load_example,
-                kwargs={
-                    "text": (
-                        "Notre pays est détruit par les mêmes élites depuis 30 ans. "
-                        "Il est temps de reprendre le contrôle, d’abolir leurs privilèges "
-                        "et de les faire payer pour leurs crimes."
-                    )
-                },
-            )
 
 # ───────────────── ANALYSE ─────────────────
 
@@ -556,7 +593,10 @@ if analyze_button:
 
     word_count = count_words(source_text)
 
-    with st.spinner("Analyse en cours..."):
+    st.session_state["analysis_status"] = "Analyse en cours…"
+    st.session_state["is_loading"] = True
+
+    with st.spinner("Analyse en cours…"):
         try:
             response = client.chat.completions.create(
                 model="gpt-5.1",
@@ -581,6 +621,10 @@ if analyze_button:
     st.session_state["analysis_data"] = data
     st.session_state["source_text"] = source_text
     st.session_state["word_count"] = word_count
+    st.session_state["analysis_status"] = (
+        "Analyse terminée ✅ Fais défiler pour voir le verdict."
+    )
+    st.session_state["is_loading"] = False
 
 
 # ───────────────── AFFICHAGE SI ANALYSE DISPO ─────────────────
@@ -590,6 +634,7 @@ source_text = st.session_state.get("source_text", "")
 word_count = st.session_state.get("word_count", 0)
 
 if data:
+    # CSS pour les cards SUBTEXT
     st.markdown(
         """
         <style>
@@ -805,6 +850,7 @@ if data:
         st.markdown("#### 💬 Réponse suggérée")
 
         if is_conversational_type(detected_type):
+            # --- Options de réponse (objectif, ton, emojis) ---
             reply_goal = st.selectbox(
                 "Objectif de ta réponse :",
                 [
@@ -835,9 +881,11 @@ if data:
 
             gen_col, reset_col = st.columns([1, 1])
 
+            # Bouton pour générer la réponse
             with gen_col:
                 gen_reply = st.button("Générer une réponse", key="reply_after_analysis")
 
+            # Bouton reset complet (input + analyse + réponse)
             with reset_col:
                 st.button(
                     "🔁 Reset complet",
@@ -845,6 +893,7 @@ if data:
                     on_click=reset_all,
                 )
 
+            # Génération de la réponse si demandé
             if gen_reply:
                 with st.spinner("Rédaction de la réponse..."):
                     try:
@@ -887,6 +936,7 @@ Règles générales :
                     except Exception as e:
                         st.error(f"Erreur lors de la génération de la réponse : {e}")
 
+            # Zone de texte éditable avec la réponse
             reply_text = st.session_state.get("reply_text", "")
             if reply_text:
                 st.text_area(
