@@ -6,9 +6,6 @@ import streamlit as st
 from openai import OpenAI
 
 # ───────────────── CONFIG GLOBALE ─────────────────
-# Conserve le titre et l'icône, mais permet un rendu plus large tout en
-# restant centré pour une meilleure utilisation de l'espace sur grand
-# écran. Le sidebar est masqué par défaut.
 st.set_page_config(
     page_title="SUBTEXT — Détecteur de Bullshit",
     page_icon="👁️",
@@ -16,64 +13,51 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Instanciation du client OpenAI. La clé API doit être fournie via les
-# secrets Streamlit ou les variables d'environnement comme auparavant.
 client = OpenAI()
-
-# Nom du modèle principal utilisé pour l'analyse. Vous pouvez le
-# modifier ici sans impacter le reste de l'application.
-OPENAI_MAIN_MODEL = "gpt-5.1"
+OPENAI_MAIN_MODEL = "gpt-4.1"
 
 # ───────────────── STYLES GLOBAUX (Dark / Mobile-first) ─────────────────
-# La feuille de style suivante définit l'ensemble des règles pour une
-# interface sombre, moderne et adaptée aux mobiles. Les couleurs sont
-# optimisées pour un fort contraste (lisibilité iOS/Android).
 st.markdown(
     """
     <style>
     /* 1. CONFIGURATION DE BASE ET COULEURS */
     html, body, .stApp {
-        background-color: #0f172a !important; /* Fond sombre profond */
-        color: #f1f5f9 !important;           /* Texte quasi blanc */
+        background-color: #0f172a !important;
+        color: #f1f5f9 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", sans-serif;
     }
     
-    /* Masquer les éléments natifs Streamlit inutiles */
     [data-testid="stAppViewContainer"] { background-color: transparent !important; }
     [data-testid="stHeader"] { background-color: rgba(0, 0, 0, 0) !important; }
     
-    /* Marges et conteneur principal */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 1.5rem;
         max-width: 780px;
     }
 
-    /* Titres */
     h1, h2, h3, h4 {
         font-weight: 700;
         letter-spacing: 0.02em;
-        color: #f1f5f9 !important; /* Force le blanc pour éviter le gris sur mobile */
+        color: #f1f5f9 !important;
     }
 
-    /* 2. CARTES ET CONTENEURS */
     .hero-card {
         border-radius: 20px;
         padding: 1.2rem 1.4rem;
         background: linear-gradient(135deg, #0f172a, #172a45);
-        border: 1px solid #334155; /* Bordure légèrement plus claire */
+        border: 1px solid #334155;
     }
     .sub-card {
         border-radius: 16px;
         padding: 0.9rem 1.1rem;
-        background: #1e293b; /* Un peu plus clair que le fond pour contraste */
+        background: #1e293b;
         border: 1px solid #334155;
     }
 
-    /* 3. TAGS ET LABELS */
     .small-label {
         font-size: 0.78rem;
-        color: #cbd5e1; /* Gris clair (lisible) au lieu de gris foncé */
+        color: #cbd5e1;
         text-transform: uppercase;
         letter-spacing: 0.12em;
         font-weight: 600;
@@ -95,7 +79,6 @@ st.markdown(
     .tag-pill.info   { background: #1e3a8a; color: #dbeafe; }
     .tag-pill.safe   { background: #064e3b; color: #d1fae5; }
 
-    /* 4. MÉTRIQUES */
     .metric-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -140,20 +123,27 @@ st.markdown(
         border-radius: 999px;
     }
 
-    /* 5. CHAMPS DE TEXTE (INPUTS) */
     textarea, input {
-        font-size: 16px !important; /* Empêche le zoom auto sur iPhone */
+        font-size: 16px !important;
         background-color: #1e293b !important;
         color: #f1f5f9 !important;
         border: 1px solid #475569 !important;
         border-radius: 8px !important;
+    }
+    textarea {
+        min-height: 200px;
+    }
+    @media (max-width: 640px) {
+        textarea {
+            min-height: 220px;
+            max-height: 60vh;
+        }
     }
     ::placeholder {
         color: #94a3b8 !important;
         opacity: 1;
     }
 
-    /* 6. BOUTONS CLASSIQUES */
     .stButton > button {
         background-color: #1e293b !important;
         color: #f1f5f9 !important;
@@ -168,7 +158,6 @@ st.markdown(
         color: #f97373 !important;
     }
 
-    /* 7. ONGLETS (TABS) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         overflow-x: auto;
@@ -191,7 +180,6 @@ st.markdown(
         font-weight: 700;
     }
 
-    /* 8. RÉPONSES (COPY BOX) */
     .reply-block { margin-top: 0.6rem; }
     .reply-box {
         width: 100%;
@@ -216,7 +204,7 @@ st.markdown(
         cursor: pointer;
     }
 
-    /* 9. TOGGLE CALME / ROAST — Radio stylé pill */
+    /* TOGGLE CALME / ROAST — Radio stylé pill */
     div[data-testid="stRadio"] {
         display: inline-flex !important;
         background-color: #020617 !important;
@@ -225,33 +213,38 @@ st.markdown(
         border: 1px solid #334155 !important;
         gap: 4px !important;
     }
-
     div[data-testid="stRadio"] > label {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 0.35rem 1.1rem !important;
+        padding: 0.45rem 1.3rem !important;
         border-radius: 999px !important;
         cursor: pointer !important;
         user-select: none !important;
         background: transparent !important;
         color: #cbd5e1 !important;
-        font-size: 0.9rem !important;
+        font-size: 0.95rem !important;
         font-weight: 500 !important;
     }
-
     div[data-testid="stRadio"] > label[aria-checked="true"] {
         background-color: #f97373 !important;
         color: #0f172a !important;
         font-weight: 700 !important;
     }
+    @media (max-width: 640px) {
+        div[data-testid="stRadio"] {
+            width: 100% !important;
+            justify-content: space-between !important;
+        }
+        div[data-testid="stRadio"] > label {
+            flex: 1 1 0 !important;
+            text-align: center !important;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
-
-
 
 # ───────────────── DEMO TEXTES ─────────────────
 DEMO_EMAIL_MANAGER = (
@@ -277,7 +270,7 @@ DEMO_FORUM_TOXIC = (
     "Cette réforme est la seule voie possible pour sauver notre modèle social, n'en déplaise aux agitateurs professionnels."
 )
 
-# ───────────────── LLM : ANALYSE ET RÉPONSE ─────────────────
+# ───────────────── LLM : ANALYSE (VERSION ANCIEN CODE) ─────────────────
 def analyze_text_with_llm(text: str) -> Optional[Dict[str, Any]]:
     """
     Appelle le modèle OpenAI pour analyser un texte et renvoie un JSON
@@ -437,6 +430,7 @@ Format de sortie :
         st.error(f"Erreur lors de l'appel à l'IA (analyse) : {e}")
         return None
 
+# ───────────────── LLM : RÉPONSES (VERSION ANCIEN CODE) ─────────────────
 def generate_replies_with_llm(
     original_text: str,
     analysis: Dict[str, Any],
@@ -460,13 +454,16 @@ def generate_replies_with_llm(
     """
     if not analysis or not original_text:
         return {"calm": "", "assertive": ""}
+
     use_sarcastic = False
+    # Ancienne logique : mode "trash" uniquement, mais on conserve tel quel
     if persona_mode.lower() == "trash":
         use_sarcastic = True
     else:
         lower_tone = tone_pref.lower() if tone_pref else ""
         if "sarcastique" in lower_tone or "moqueur" in lower_tone:
             use_sarcastic = True
+
     if use_sarcastic:
         system_prompt = """
 Tu es un "Khey" légendaire du forum 18-25 de JeuxVideo.com.
@@ -512,6 +509,7 @@ Format JSON STRICT :
   "assertive": "réponse courte, posée mais ferme"
 }
 """
+
     summary_for_reply = {
         "global_score": analysis.get("global_score"),
         "global_label": analysis.get("global_label"),
@@ -523,6 +521,7 @@ Format JSON STRICT :
         "profile": analysis.get("profile", {}),
         "plain_translation": analysis.get("plain_translation", ""),
     }
+
     user_prompt = f"""
 Texte original reçu :
 {original_text}
@@ -566,33 +565,38 @@ Génère UNIQUEMENT un objet json avec deux champs : "calm" et "assertive".
 
 # ───────────────── HELPERS UI ─────────────────
 def render_tag(text: str, level: str = "info") -> str:
-    """Retourne un fragment HTML pour afficher un tag stylisé."""
     level_class = level if level in {"danger", "warn", "info", "safe"} else "info"
     return f"<span class='tag-pill {level_class}'>{text}</span>"
 
 def get_score_color(score: int) -> str:
-    """Sélectionne une couleur en fonction du score fourni."""
     try:
         s = int(score)
     except Exception:
         return "#f1f5f9"
     if s >= 75:
-        return "#f87171"  # rouge
+        return "#f87171"
     if s >= 50:
-        return "#fbbf24"  # ambre
+        return "#fbbf24"
     if s >= 25:
-        return "#34d399"  # vert clair
-    return "#6ee7b7"      # vert
+        return "#34d399"
+    return "#6ee7b7"
 
 def reset_app() -> None:
-    """Réinitialise l'état de l'application lors de l'appui sur le bouton reset."""
-    keys_to_clear = ["input_text", "analysis", "replies", "tone_pref", "emoji_allowed"]
+    # Ancienne logique + nouveau scroll_to_results
+    keys_to_clear = [
+        "input_text",
+        "analysis",
+        "replies",
+        "tone_pref",
+        "emoji_allowed",
+        "scroll_to_results",
+    ]
     for k in keys_to_clear:
         if k in st.session_state:
             del st.session_state[k]
 
 def render_reply_block(title: str, text: str) -> None:
-    """Affiche un bloc de réponse avec un bouton de copie."""
+    """Bloc de réponse + bouton copier (ancienne version)."""
     if not text:
         return
     escaped = html_lib.escape(text)
@@ -611,7 +615,6 @@ def render_reply_block(title: str, text: str) -> None:
     )
 
 def render_metric_card(label: str, score: int, sublabel: str) -> str:
-    """Construit le HTML pour une carte métrique."""
     color = get_score_color(score)
     width = max(0, min(100, score))
     return (
@@ -636,28 +639,28 @@ if "emoji_allowed" not in st.session_state:
     st.session_state["emoji_allowed"] = True
 if "input_text" not in st.session_state:
     st.session_state["input_text"] = ""
+if "is_scanning" not in st.session_state:
+    st.session_state["is_scanning"] = False
+if "scroll_to_results" not in st.session_state:
+    st.session_state["scroll_to_results"] = False
 if "persona_mode" not in st.session_state:
     st.session_state["persona_mode"] = "Calme"
 
 # ───────────────── EN-TÊTE + TOGGLE DE MODE ─────────────────
-# L'en-tête présente le basculeur de mode et les titres. On utilise
-# des colonnes pour aligner correctement sur desktop tout en gardant
-# une bonne adaptation sur mobile (les éléments s'empilent). Un
-# `st.caption` explicatif suit le toggle pour clarifier la différence
-# entre les modes.
 with st.container():
     col_toggle, col_title = st.columns([1.2, 3], gap="small")
+
     with col_toggle:
-        # Toggle Calme / Roast via st.radio horizontal (plus robuste que segmented_control)
+        default_mode = st.session_state.get("persona_mode", "Calme")
         persona_mode = st.radio(
-            label="Mode d'analyse",
+            label="",
             options=["Calme", "Roast"],
-            index=["Calme", "Roast"].index(st.session_state.get("persona_mode", "Calme")),
-            key="persona_toggle",
-            label_visibility="collapsed",
+            index=0 if default_mode == "Calme" else 1,
+            key="persona_mode",
             horizontal=True,
+            label_visibility="collapsed",
         )
-        st.session_state["persona_mode"] = persona_mode
+
     with col_title:
         st.markdown(
             "<h1 style='margin-bottom:0.1rem;'>👁️ SUBTEXT</h1>",
@@ -669,17 +672,32 @@ with st.container():
             "</p>",
             unsafe_allow_html=True,
         )
-    # Légende expliquant les deux modes
+        st.caption("Sélectionne ton mode d’analyse en haut à gauche.")
+
     if persona_mode == "Calme":
         st.caption("Mode Calme : complet, sérieux et défensif. Toutes les analyses sont affichées.")
     else:
         st.caption("Mode Roast : léger et impertinent, quelques détails sont masqués pour plus de rapidité.")
 
+# ───────────────── MICRO-ONBOARDING ─────────────────
+with st.container():
+    st.markdown(
+        """
+        <div class="sub-card" style="margin-top:0.6rem;margin-bottom:0.4rem;">
+          <div class="small-label">Comment ça marche</div>
+          <ul style="margin:0.4rem 0 0.2rem 0.1rem;padding-left:1rem;font-size:0.9rem;color:#cbd5e1;">
+            <li><b>1.</b> Colle un message, un post ou un mail tendu.</li>
+            <li><b>2.</b> Clique sur <b>Scanner le sous-texte</b> et laisse l’IA décortiquer.</li>
+            <li><b>3.</b> Lis le diagnostic, puis copie une réponse prête à envoyer.</li>
+          </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 st.markdown("---")
 
 # ───────────────── DEMO BAR + INPUT ─────────────────
-# Cette section regroupe les exemples et la zone de saisie.
-# Sur mobile, les démos sont dans un expander pour que le champ de texte reste visible immédiatement.
 with st.container():
     with st.expander("✨ Tester avec un exemple (optionnel)", expanded=False):
         st.caption("Choisis un exemple :")
@@ -707,32 +725,47 @@ with st.container():
     st.text_area(
         label="",
         key="input_text",
-        height=180,
+        height=220,
         placeholder="Colle le message, l'article, le discours, le tweet ou le post ici…",
     )
     st.caption("ℹ️ Vos messages ne sont ni stockés ni partagés. Ils servent uniquement le temps de l'analyse.")
+
     col_scan, col_reset = st.columns([3, 1], gap="small")
     with col_scan:
-        scan_clicked = st.button("🔍 Scanner le sous-texte", use_container_width=True)
+        scan_clicked = st.button(
+            "🔍 Scanner le sous-texte",
+            use_container_width=True,
+            disabled=st.session_state.get("is_scanning", False),
+        )
     with col_reset:
         st.button("🧹 Réinitialiser", use_container_width=True, on_click=reset_app)
 
-    # Déclencher l'analyse si l'utilisateur clique sur le bouton
     if scan_clicked:
         input_text = st.session_state.get("input_text", "")
         if not input_text.strip():
             st.warning("Colle d'abord un texte à analyser.")
         else:
-            # Message d'attente rassurant (~45s)
-            with st.spinner("⏳ Analyse du message en cours… (~45 secondes max)\nJe décortique tout le sous-texte, je ne suis pas planté 😌"):
+            st.session_state["is_scanning"] = True
+            with st.spinner(
+                "⏳ Analyse du message en cours… (ça peut prendre quelques secondes, je ne suis pas planté 😌)"
+            ):
                 analysis = analyze_text_with_llm(input_text)
+
             st.session_state["analysis"] = analysis
             st.session_state["replies"] = {"calm": "", "assertive": ""}
+            st.session_state["is_scanning"] = False
+
             if analysis:
-                # Déterminer le ton par défaut en fonction du mode sélectionné
-                default_tone = "sarcastique / moqueur (déconseillé)" if persona_mode == "Roast" else "calme"
-                with st.spinner("🛡️ Préparation des suggestions de réponse…"):
-                    try:
+                # Ton par défaut selon le mode (comme ton ancien pattern)
+                default_tone = (
+                    "sarcastique / moqueur (déconseillé)" if persona_mode == "Roast" else "calme"
+                )
+                st.session_state["tone_pref"] = default_tone
+                st.session_state["emoji_allowed"] = True
+
+                # Génération initiale des réponses via l'ANCIEN generate_replies_with_llm
+                try:
+                    with st.spinner("🛡️ Préparation des suggestions de réponse…"):
                         default_replies = generate_replies_with_llm(
                             original_text=input_text,
                             analysis=analysis,
@@ -741,14 +774,33 @@ with st.container():
                             persona_mode=persona_mode,
                         )
                         st.session_state["replies"] = default_replies
-                    except Exception:
-                        pass
+                except Exception:
+                    pass
+
                 st.toast("Analyse terminée ✅", icon="✅")
+                st.session_state["scroll_to_results"] = True
 
 # ───────────────── AFFICHAGE DES RÉSULTATS ─────────────────
 analysis = st.session_state.get("analysis")
 if analysis:
-    # Extraction des variables d'analyse
+    persona_mode_current = st.session_state.get("persona_mode", "Calme")
+
+    # Ancre pour scroll auto
+    st.markdown("<div id='subtext-results'></div>", unsafe_allow_html=True)
+    if st.session_state.get("scroll_to_results"):
+        st.markdown(
+            """
+            <script>
+            const el = window.document.getElementById("subtext-results");
+            if (el) {
+                el.scrollIntoView({behavior: "smooth", block: "start"});
+            }
+            </script>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.session_state["scroll_to_results"] = False
+
     content_type = (analysis.get("content_type") or "autre").lower()
     global_score = int(analysis.get("global_score", 0))
     global_label = analysis.get("global_label", "Ambigu")
@@ -767,7 +819,7 @@ if analysis:
     fact_checks = analysis.get("fact_checks", []) or []
     recommended_actions = analysis.get("recommended_actions", []) or []
 
-    # Vue d'ensemble dans une carte héro
+    # Vue d'ensemble
     st.markdown("<div class='hero-card'>", unsafe_allow_html=True)
     st.markdown("<div class='small-label'>Vue d'ensemble</div>", unsafe_allow_html=True)
     score_color = get_score_color(global_score)
@@ -798,16 +850,22 @@ if analysis:
         """,
         unsafe_allow_html=True,
     )
-    # Effets secondaires
+
     if secondary_effects:
-        st.markdown("<div class='small-label' style='margin-top:0.6rem;'>Autres réactions possibles</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='small-label' style='margin-top:0.6rem;'>Autres réactions possibles</div>",
+            unsafe_allow_html=True,
+        )
         effects_html = ""
         for eff in secondary_effects:
             effects_html += render_tag(eff, "info")
         st.markdown(effects_html, unsafe_allow_html=True)
-    # Tags
+
     if tags:
-        st.markdown("<div class='small-label' style='margin-top:0.6rem;'>Signaux détectés</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='small-label' style='margin-top:0.6rem;'>Signaux détectés</div>",
+            unsafe_allow_html=True,
+        )
         tag_html = ""
         for t in tags:
             low = t.lower()
@@ -822,7 +880,6 @@ if analysis:
         st.markdown(tag_html, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Traduction en langage clair
     if plain_translation:
         st.markdown("")
         st.markdown("<div class='sub-card'>", unsafe_allow_html=True)
@@ -830,17 +887,19 @@ if analysis:
         st.markdown(plain_translation)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Construction des onglets
+    # Tabs
     tab_labels: List[str] = []
     fact_available = content_type in ("article", "discours", "forum", "réseau_social") and bool(fact_checks)
     response_available = content_type not in ("article", "discours")
     tab_labels.append("🧩 Diagnostic")
     tab_labels.append("🎯 Actions")
-    if persona_mode == "Calme":
+    if persona_mode_current == "Calme":
         tab_labels.append("🔍 Décryptage")
     tab_labels.append("🧪 Fact-check" if fact_available else "🧪 Fact-check (N/A)")
     tab_labels.append("🛡️ Réponse" if response_available else "🛡️ Réponse (N/A)")
+    st.caption("↔️ Sur mobile, fais glisser vers la gauche/droite pour voir tous les onglets.")
     tabs = st.tabs(tab_labels)
+
     idx = 0
 
     # Diagnostic
@@ -860,13 +919,14 @@ if analysis:
             st.markdown(f"- **Rapport de force :** {power_asym}")
             st.markdown(f"- **Public visé :** {target_audience}")
         st.markdown("</div>", unsafe_allow_html=True)
-        # Metrics
+
         h_score = int(hostility.get("score", 0) or 0)
         h_label = hostility.get("label", "—")
         m_score = int(manipulation.get("score", 0) or 0)
         m_label = manipulation.get("label", "—")
         p_score = int(pressure.get("score", 0) or 0)
         p_label = pressure.get("label", "—")
+
         st.markdown("<div class='small-label'>Niveau de tension du message</div>", unsafe_allow_html=True)
         st.markdown("<div class='metric-grid'>", unsafe_allow_html=True)
         st.markdown(render_metric_card("Hostilité", h_score, h_label), unsafe_allow_html=True)
@@ -874,12 +934,14 @@ if analysis:
         st.markdown(render_metric_card("Pression sociale", p_score, p_label), unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         st.caption("Plus le pourcentage est haut, plus le message est lourd/agressif sur cet axe.")
+
         if reaction_validation:
             st.markdown("<div class='sub-card' style='margin-top:0.9rem;'>", unsafe_allow_html=True)
             st.markdown("**🎭 Est-ce que ta réaction est normale ?**", unsafe_allow_html=True)
             st.markdown(reaction_validation)
             st.markdown("</div>", unsafe_allow_html=True)
-        if highlights and persona_mode == "Calme":
+
+        if highlights and persona_mode_current == "Calme":
             with st.expander("🔎 Passages précis repérés dans le texte", expanded=False):
                 for h in highlights:
                     quote = (h.get("quote") or "").strip()
@@ -916,7 +978,7 @@ if analysis:
                     prio_icon = "🟠"
                 else:
                     prio_icon = "🟡"
-                if persona_mode == "Roast":
+                if persona_mode_current == "Roast":
                     st.markdown(f"{prio_icon} **{label}**")
                 else:
                     st.markdown("<div class='sub-card' style='margin-bottom:0.6rem;'>", unsafe_allow_html=True)
@@ -926,8 +988,8 @@ if analysis:
                     st.markdown("</div>", unsafe_allow_html=True)
     idx += 1
 
-    # Décryptage (uniquement en mode Calme)
-    if persona_mode == "Calme":
+    # Décryptage
+    if persona_mode_current == "Calme":
         with tabs[idx]:
             st.markdown("#### Décryptage de fond")
             with st.expander("Voir l'analyse détaillée du contexte et des rapports de force", expanded=False):
@@ -986,7 +1048,7 @@ if analysis:
             st.caption("Cette section n'est pas disponible pour ce type de contenu.")
     idx += 1
 
-    # Réponse
+    # Réponse — 100% ancienne logique
     with tabs[idx]:
         if not response_available:
             st.caption("SUBTEXT ne propose pas de réponse rédigée pour ce type de contenu (informel).")
@@ -1001,7 +1063,7 @@ if analysis:
                     "direct mais respectueux",
                     "sarcastique / moqueur (déconseillé)",
                 ]
-                default_index = 4 if persona_mode == "Roast" else 0
+                default_index = 4 if persona_mode_current == "Roast" else 0
                 current_tone = st.session_state.get("tone_pref", tone_options[default_index])
                 if current_tone in tone_options:
                     default_index = tone_options.index(current_tone)
@@ -1017,9 +1079,11 @@ if analysis:
                     value=st.session_state.get("emoji_allowed", True),
                     key="emoji_checkbox",
                 )
+
             tone_pref = st.session_state["tone_pref"]
             emoji_allowed = st.session_state["emoji_allowed"]
             original_for_reply = st.session_state.get("input_text", "")
+
             st.caption("SUBTEXT te suggère 2 versions : une calme et une plus ferme.")
             if st.button("🛡️ Générer / mettre à jour la réponse suggérée", use_container_width=True):
                 with st.spinner("Génération de la réponse…"):
@@ -1028,10 +1092,11 @@ if analysis:
                         analysis=analysis,
                         tone_pref=tone_pref,
                         emoji_allowed=emoji_allowed,
-                        persona_mode=persona_mode,
+                        persona_mode=persona_mode_current,
                     )
                 st.session_state["replies"] = replies
                 st.toast("Réponse générée ✅", icon="✅")
+
             replies = st.session_state["replies"]
             if replies.get("calm") or replies.get("assertive"):
                 tabs_reply = st.tabs(["😌 Version calme", "💬 Version assertive"])
@@ -1048,22 +1113,45 @@ if analysis:
             else:
                 st.caption("Aucune réponse générée pour l'instant.")
 
-    # Résumé partageable
+    # ───────────────── RÉSUMÉ PARTAGEABLE ─────────────────
     st.markdown("---")
     st.subheader("📸 Résumé partageable")
     score = global_score
     clean_score_color = get_score_color(score)
-    clean_context = st.session_state["input_text"][:90].replace('"', '&quot;').replace('\n', ' ') + "..."
+    clean_context = (
+        st.session_state["input_text"][:90].replace('"', '&quot;').replace("\n", " ") + "..."
+    )
     clean_punchline = plain_translation.replace('"', '&quot;') if plain_translation else ""
     clean_viral = viral_punchline.replace('"', '&quot;') if viral_punchline else ""
-    clean_tags = "".join([
-        f"<span style='background:#334155;padding:2px 6px;border-radius:4px;color:#e2e8f0;margin-right:5px;font-size:0.7rem;'>{t}</span>"
-        for t in tags[:3]
-    ]) or "<span style='font-size:0.7rem;color:#6b7280;'>aucun signal critique</span>"
+    clean_tags = (
+        "".join(
+            [
+                f"<span style='background:#334155;padding:2px 6px;border-radius:4px;color:#e2e8f0;margin-right:5px;font-size:0.7rem;'>{t}</span>"
+                for t in tags[:3]
+            ]
+        )
+        or "<span style='font-size:0.7rem;color:#6b7280;'>aucun signal critique</span>"
+    )
 
-    # Punchline bienveillante en mode Calme, punchline violente uniquement en mode Roast
-    if persona_mode == "Calme":
-        supportive_text = reaction_validation or "Tu n'exagères pas : ce message est vraiment lourd pour toi."
+    tags_text = ", ".join(tags[:3]) if tags else "aucun signal critique"
+    plain_translation_text = plain_translation or "—"
+
+    bbcode_summary = f"""[quote]
+📊 Rapport SUBTEXT — Détecteur de bullshit
+
+Indice de pression : {score}% ({global_label})
+Signaux principaux : {tags_text}
+
+Traduction relationnelle :
+{plain_translation_text}
+[/quote]
+
+Généré par SUBTEXT — Détecteur de bullshit (MVP)."""
+
+    if persona_mode_current == "Calme":
+        supportive_text = (
+            reaction_validation or "Tu n'exagères pas : ce message est vraiment lourd pour toi."
+        )
         clean_supportive = supportive_text.replace('"', '&quot;')
         punchline_block = f"""
   <div style="background:#172a45;border:1px solid #38bdf8;border-radius:8px;padding:0.8rem;text-align:center;margin-bottom:1rem;">
@@ -1107,13 +1195,17 @@ if analysis:
 """
     st.markdown(html_code, unsafe_allow_html=True)
     st.caption("Prends une capture de cet encadré pour partager le scan.")
-    st.markdown("")
+
+    if st.button("📋 Copier en version forum (BBCode)"):
+        st.code(bbcode_summary, language="text")
+        st.success("Sélectionne ce bloc et copie-le (Ctrl+C / Cmd+C) pour le coller sur un forum.")
+
     st.markdown(
-        "<p style='text-align:center;color:#475569;font-size:0.8rem;'>Made by Thomas — MVP SUBTEXT</p>",
+        "<p style='text-align:center;color:#475569;font-size:0.8rem;margin-top:0.3rem;'>Made by Thomas — MVP SUBTEXT</p>",
         unsafe_allow_html=True,
     )
+
 else:
-    # message d'accueil quand aucune analyse n'est encore faite
     st.markdown(
         "<p style='color:#94a3b8;font-size:0.9rem;'>Après avoir lancé l'analyse, les résultats s'afficheront ici sous forme de carte et de conseils.</p>",
         unsafe_allow_html=True,
