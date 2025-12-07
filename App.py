@@ -503,7 +503,7 @@ Mission :
  2) "assertive" : posée mais ferme, pose des limites claires, sans insulte ni mépris.
 
 Contraintes :
-- 1–4 phrases max par réponse (environ 300 caractères).
+- 1–4 phrases max par réponse (environ 300 caractères). Sauf si le texte analysé est plus long, alors s'adapter à sa longueur.
 - Tu n'expliques pas ta réponse, tu ne renvoies que le JSON ci-dessous.
 
 Format JSON STRICT :
@@ -723,8 +723,8 @@ with st.container():
         if not input_text.strip():
             st.warning("Colle d'abord un texte à analyser.")
         else:
-            # Message d'attente rassurant (~30s)
-            with st.spinner("⏳ Analyse du message en cours… (~30 secondes max)\nJe décortique tout le sous-texte, je ne suis pas planté 😌"):
+            # Message d'attente rassurant (~45s)
+            with st.spinner("⏳ Analyse du message en cours… (~45 secondes max)\nJe décortique tout le sous-texte, je ne suis pas planté 😌"):
                 analysis = analyze_text_with_llm(input_text)
             st.session_state["analysis"] = analysis
             st.session_state["replies"] = {"calm": "", "assertive": ""}
