@@ -27,71 +27,75 @@ OPENAI_MAIN_MODEL = "gpt-5.1"
 # ───────────────── STYLES GLOBAUX (Dark / Mobile-first) ─────────────────
 # La feuille de style suivante définit l'ensemble des règles pour une
 # interface sombre, moderne et adaptée aux mobiles. Les couleurs sont
-# légèrement plus claires que dans la version initiale pour améliorer
-# la lisibilité. Les composants (cartes, boutons, onglets) sont
-# uniformisés et utilisent des variables d'accentuation cohérentes.
+# optimisées pour un fort contraste (lisibilité iOS/Android).
 st.markdown(
     """
     <style>
-    /* Couleurs de base et polices */
+    /* 1. CONFIGURATION DE BASE ET COULEURS */
     html, body, .stApp {
-        background-color: #0f172a !important;
-        color: #f1f5f9 !important;
+        background-color: #0f172a !important; /* Fond sombre profond */
+        color: #f1f5f9 !important;           /* Texte quasi blanc */
         font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", sans-serif;
     }
-    [data-testid="stAppViewContainer"] {
-        background-color: transparent !important;
-    }
-    [data-testid="stHeader"] {
-        background-color: rgba(0, 0, 0, 0) !important;
-    }
+    
+    /* Masquer les éléments natifs Streamlit inutiles */
+    [data-testid="stAppViewContainer"] { background-color: transparent !important; }
+    [data-testid="stHeader"] { background-color: rgba(0, 0, 0, 0) !important; }
+    
+    /* Marges et conteneur principal */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 1.5rem;
         max-width: 780px;
     }
+
+    /* Titres */
     h1, h2, h3, h4 {
         font-weight: 700;
         letter-spacing: 0.02em;
-        color: #f1f5f9;
+        color: #f1f5f9 !important; /* Force le blanc pour éviter le gris sur mobile */
     }
-    /* Cartes principales */
+
+    /* 2. CARTES ET CONTENEURS */
     .hero-card {
         border-radius: 20px;
         padding: 1.2rem 1.4rem;
         background: linear-gradient(135deg, #0f172a, #172a45);
-        border: 1px solid #1e293b;
+        border: 1px solid #334155; /* Bordure légèrement plus claire */
     }
     .sub-card {
         border-radius: 16px;
         padding: 0.9rem 1.1rem;
-        background: #172a45;
-        border: 1px solid #1e293b;
+        background: #1e293b; /* Un peu plus clair que le fond pour contraste */
+        border: 1px solid #334155;
     }
+
+    /* 3. TAGS ET LABELS */
     .small-label {
         font-size: 0.78rem;
-        color: #94a3b8;
+        color: #cbd5e1; /* Gris clair (lisible) au lieu de gris foncé */
         text-transform: uppercase;
         letter-spacing: 0.12em;
+        font-weight: 600;
     }
-    /* Tags */
     .tag-pill {
         display: inline-block;
         padding: 0.28rem 0.55rem;
         border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 500;
+        font-size: 0.75rem;
+        font-weight: 600;
         margin-right: 0.35rem;
         margin-bottom: 0.25rem;
-        background: #1e293b;
-        color: #e5e7eb;
+        background: #334155;
+        color: #f8fafc;
         white-space: nowrap;
     }
-    .tag-pill.danger { background: #7f1d1d; color: #fee2e2; }
-    .tag-pill.warn   { background: #92400e; color: #fef3c7; }
-    .tag-pill.info   { background: #1e40af; color: #dbeafe; }
-    .tag-pill.safe   { background: #065f46; color: #d1fae5; }
-    /* Grille des métriques */
+    .tag-pill.danger { background: #7f1d1d; color: #fecaca; }
+    .tag-pill.warn   { background: #78350f; color: #fef3c7; }
+    .tag-pill.info   { background: #1e3a8a; color: #dbeafe; }
+    .tag-pill.safe   { background: #064e3b; color: #d1fae5; }
+
+    /* 4. MÉTRIQUES */
     .metric-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -99,29 +103,28 @@ st.markdown(
         margin-top: 0.6rem;
     }
     @media (max-width: 640px) {
-        .metric-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+        .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     .metric-card {
         border-radius: 14px;
         padding: 0.7rem 0.8rem;
         background: #0f172a;
-        border: 1px solid #1e293b;
+        border: 1px solid #334155;
     }
     .metric-label {
         font-size: 0.75rem;
-        color: #94a3b8;
+        color: #cbd5e1;
         margin-bottom: 0.15rem;
     }
     .metric-value {
         font-size: 1.35rem;
         font-weight: 700;
         line-height: 1.1;
+        color: #f1f5f9;
     }
     .metric-sub {
         font-size: 0.8rem;
-        color: #cbd5e1;
+        color: #94a3b8;
         margin-top: 0.1rem;
     }
     .metric-bar-bg {
@@ -129,101 +132,126 @@ st.markdown(
         width: 100%;
         height: 5px;
         border-radius: 999px;
-        background: #1e293b;
+        background: #334155;
         overflow: hidden;
     }
     .metric-bar-fill {
         height: 100%;
         border-radius: 999px;
     }
-    /* Champs d'entrée */
+
+    /* 5. CHAMPS DE TEXTE (INPUTS) */
     textarea, input {
-        font-size: 0.9rem !important;
-        background-color: #0f172a !important;
+        font-size: 16px !important; /* Empêche le zoom auto sur iPhone */
+        background-color: #1e293b !important;
         color: #f1f5f9 !important;
-        border: 1px solid #334155 !important;
+        border: 1px solid #475569 !important;
         border-radius: 8px !important;
     }
-    /* Boutons */
+    ::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1;
+    }
+
+    /* 6. BOUTONS CLASSIQUES */
     .stButton > button {
-        background-color: #172a45 !important;
+        background-color: #1e293b !important;
         color: #f1f5f9 !important;
         border-radius: 999px !important;
-        border: 1px solid #334155 !important;
+        border: 1px solid #475569 !important;
         padding: 0.55rem 0.9rem !important;
-        font-size: 0.9rem !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
     }
     .stButton > button:hover {
         border-color: #f97373 !important;
         color: #f97373 !important;
     }
-    /* Onglets */
+
+    /* 7. ONGLETS (TABS) */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0.3rem;
+        gap: 0.5rem;
         overflow-x: auto;
         scrollbar-width: none;
     }
-    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
-        display: none;
-    }
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
+    
     .stTabs [data-baseweb="tab"] {
         background-color: transparent;
-        padding: 0.25rem 0.6rem;
-        border-radius: 999px 999px 0 0;
-        color: #cbd5e1;
-        font-size: 0.9rem;
+        padding: 0.5rem 0.8rem;
+        border-radius: 8px;
+        color: #94a3b8;
+        font-size: 0.95rem;
         white-space: nowrap;
     }
     .stTabs [aria-selected="true"] {
+        background-color: rgba(249, 115, 115, 0.1) !important;
         border-bottom: 2px solid #f97373;
         color: #f97373 !important;
-        font-weight: 600;
+        font-weight: 700;
     }
-    /* Réponses et copie */
-    .reply-block {
-        margin-top: 0.6rem;
-    }
+
+    /* 8. RÉPONSES (COPY BOX) */
+    .reply-block { margin-top: 0.6rem; }
     .reply-box {
         width: 100%;
         background-color: #0f172a;
-        color: #f1f5f9;
+        color: #e2e8f0;
         border-radius: 12px;
         border: 1px solid #334155;
-        padding: 0.75rem;
+        padding: 1rem;
         white-space: pre-wrap;
         overflow-wrap: break-word;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        line-height: 1.5;
     }
     .copy-btn {
         margin-top: 0.5rem;
         border-radius: 999px;
         border: 1px solid #475569;
-        background: #172a45;
+        background: #1e293b;
         color: #e2e8f0;
-        padding: 0.35rem 0.9rem;
+        padding: 0.4rem 1rem;
         font-size: 0.85rem;
         cursor: pointer;
     }
-    .copy-btn:hover {
-        border-color: #f97373;
-        color: #f97373;
+
+    /* 9. TOGGLE CALME / ROAST — Radio stylé pill */
+    div[data-testid="stRadio"] {
+        display: inline-flex !important;
+        background-color: #020617 !important;
+        padding: 4px !important;
+        border-radius: 999px !important;
+        border: 1px solid #334155 !important;
+        gap: 4px !important;
     }
-    /* Segmented control customisation */
-    .mode-toggle {
-        display: inline-block;
-        margin-bottom: 0.5rem;
+
+    div[data-testid="stRadio"] > label {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.35rem 1.1rem !important;
+        border-radius: 999px !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        background: transparent !important;
+        color: #cbd5e1 !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
     }
-    /* Rendre les segments Calme/Roast bien cliquables sur le texte */
-    [data-testid="stSegmentedControl"] button {
-        cursor: pointer;
-    }
-    [data-testid="stSegmentedControl"] button > div {
-        pointer-events: auto;
+
+    div[data-testid="stRadio"] > label[aria-checked="true"] {
+        background-color: #f97373 !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+
+
 
 # ───────────────── DEMO TEXTES ─────────────────
 DEMO_EMAIL_MANAGER = (
@@ -620,14 +648,14 @@ if "persona_mode" not in st.session_state:
 with st.container():
     col_toggle, col_title = st.columns([1.2, 3], gap="small")
     with col_toggle:
-        # Toggle Calme / Roast. La clé assure la persistance du choix.
-        persona_mode = st.segmented_control(
-            label="",
+        # Toggle Calme / Roast via st.radio horizontal (plus robuste que segmented_control)
+        persona_mode = st.radio(
+            label="Mode d'analyse",
             options=["Calme", "Roast"],
-            default=st.session_state.get("persona_mode", "Calme"),
+            index=["Calme", "Roast"].index(st.session_state.get("persona_mode", "Calme")),
             key="persona_toggle",
             label_visibility="collapsed",
-            width="content",
+            horizontal=True,
         )
         st.session_state["persona_mode"] = persona_mode
     with col_title:
@@ -650,31 +678,30 @@ with st.container():
 st.markdown("---")
 
 # ───────────────── DEMO BAR + INPUT ─────────────────
-# Cette section regroupe les exemples et la zone de saisie. Les boutons
-# d'exemple sont disposés sur deux colonnes pour une meilleure
-# ergonomie sur mobile. La zone de texte permet à l'utilisateur de
-# coller ou écrire son message, suivie des actions Scanner / Reset.
+# Cette section regroupe les exemples et la zone de saisie.
+# Sur mobile, les démos sont dans un expander pour que le champ de texte reste visible immédiatement.
 with st.container():
-    st.caption("Teste avec un exemple :")
-    col_demo_left, col_demo_right = st.columns(2, gap="small")
-    with col_demo_left:
-        if st.button("📧 Manager", use_container_width=True):
-            st.session_state["input_text"] = DEMO_EMAIL_MANAGER
-            st.session_state["analysis"] = None
-            st.session_state["replies"] = {"calm": "", "assertive": ""}
-        if st.button("💔 Rupture", use_container_width=True):
-            st.session_state["input_text"] = DEMO_SMS_RUPTURE
-            st.session_state["analysis"] = None
-            st.session_state["replies"] = {"calm": "", "assertive": ""}
-    with col_demo_right:
-        if st.button("💬 Post Réseau", use_container_width=True):
-            st.session_state["input_text"] = DEMO_TWEET_POLITIQUE
-            st.session_state["analysis"] = None
-            st.session_state["replies"] = {"calm": "", "assertive": ""}
-        if st.button("📰 Article Pol.", use_container_width=True):
-            st.session_state["input_text"] = DEMO_FORUM_TOXIC
-            st.session_state["analysis"] = None
-            st.session_state["replies"] = {"calm": "", "assertive": ""}
+    with st.expander("✨ Tester avec un exemple (optionnel)", expanded=False):
+        st.caption("Choisis un exemple :")
+        col_demo_left, col_demo_right = st.columns(2, gap="small")
+        with col_demo_left:
+            if st.button("📧 Manager", use_container_width=True):
+                st.session_state["input_text"] = DEMO_EMAIL_MANAGER
+                st.session_state["analysis"] = None
+                st.session_state["replies"] = {"calm": "", "assertive": ""}
+            if st.button("💔 Rupture", use_container_width=True):
+                st.session_state["input_text"] = DEMO_SMS_RUPTURE
+                st.session_state["analysis"] = None
+                st.session_state["replies"] = {"calm": "", "assertive": ""}
+        with col_demo_right:
+            if st.button("💬 Post Réseau", use_container_width=True):
+                st.session_state["input_text"] = DEMO_TWEET_POLITIQUE
+                st.session_state["analysis"] = None
+                st.session_state["replies"] = {"calm": "", "assertive": ""}
+            if st.button("📰 Article Pol.", use_container_width=True):
+                st.session_state["input_text"] = DEMO_FORUM_TOXIC
+                st.session_state["analysis"] = None
+                st.session_state["replies"] = {"calm": "", "assertive": ""}
 
     st.markdown("**Ou colle ton texte ici :**")
     st.text_area(
