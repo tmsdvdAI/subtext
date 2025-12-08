@@ -270,7 +270,7 @@ DEMO_FORUM_TOXIC = (
     "Cette réforme est la seule voie possible pour sauver notre modèle social, n'en déplaise aux agitateurs professionnels."
 )
 
-# ───────────────── LLM : ANALYSE (VERSION ANCIEN CODE) ─────────────────
+# ───────────────── LLM : ANALYSE (VERSION BOOSTÉE / ÉDUCATIVE + SYSTÉMIQUE) ─────────────────
 def analyze_text_with_llm(text: str) -> Optional[Dict[str, Any]]:
     """
     Appelle le modèle OpenAI pour analyser un texte et renvoie un JSON
@@ -289,9 +289,13 @@ Aider un utilisateur non spécialiste à :
 3) Voir comment ce texte s'inscrit dans des récits plus larges (idéologie, politique, culture, management...).
 4) Savoir si sa réaction est compréhensible.
 5) Décider comment réagir (ou ne pas réagir).
+6) Apprendre à repérer les techniques de rhétorique/manipulation dans d'autres textes.
+7) Comprendre, de manière simple, comment ce message s'insère dans une chaîne de valeur plus large (qui gagne quoi, qui perd quoi, qui est invisibilisé).
 
 ⚠️ STYLE
 - Langage simple, concret, sans jargon universitaire.
+- Tu expliques comme à un·e ami·e curieux·se, pas comme un prof sec.
+- Tu peux utiliser des métaphores très simples ("comme si...", "on dirait que...").
 - Tu restes sobre, nuancé, pédagogique. Pas de catastrophisme.
 - Tu expliques, tu ne juges pas l'utilisateur.
 
@@ -340,18 +344,30 @@ TU DOIS RENVOYER STRICTEMENT UN OBJET json AVEC CE SCHÉMA :
 
   "systemic_view": {
     "scale": "micro"|"méso"|"macro"|"micro→macro",
-    "power_dynamics": "3–5 phrases, vulgarisées au maximum, expliquant très concrètement qui a l'avantage, qui subit, quels acteurs sont impliqués et comment le message renforce ce rapport de force dans CE CAS PRÉCIS.",
-    "narrative_frame": "2–3 phrases simples expliquant comment le texte cadre le problème (ex: sécurité vs liberté, mérite individuel, crise permanente, responsabilité personnelle vs collective, etc.), avec des exemples concrets liés au texte.",
+
+    "power_dynamics": "UN PARAGRAPHE DÉTAILLÉ (6–9 phrases) en langage simple : qui a la main, qui subit, quels intérêts sont en jeu, comment le message installe ou renforce ce rapport de force. Tu ajoutes 1–2 phrases très pédagogiques du type « Comment repérer ça ailleurs ? » avec une astuce simple pour l'utilisateur.",
+
+    "narrative_frame": "UN PARAGRAPHE DÉTAILLÉ (5–8 phrases) expliquant : quel récit général le texte raconte (mérite, peur, crise, responsabilité individuelle vs collective, etc.), quels mots/expressions renforcent ce récit, et 1–2 petites métaphores ou images concrètes (ex : « on te présente ça comme un match entre… »).",
+
     "macro_implications": [
-      "jusqu'à 3 phrases (ou puces) décrivant, en langage du quotidien, les effets possibles à moyen / long terme sur la confiance, la coopération, la polarisation, la capacité des gens à discuter sereinement."
+      "3 à 5 puces. Chaque puce = 2–3 phrases qui relient ce message à un contexte plus large (travail, politique, réseaux sociaux, climat social…). Tu restes général : tu ne cites pas d'événement précis si tu n'es pas certain, mais tu montres comment ce type de discours peut, à long terme, abîmer ou renforcer la confiance, la discussion ou la coopération.",
+      "Tu peux t'appuyer sur des parallèles historiques ou des logiques économiques/culturelles connues, mais sans donner de dates exactes si tu n'es pas sûr."
     ]
   },
 
   "highlights": [
     {
       "quote": "extrait exact du texte original",
-      "tag": "type de problème (ex: intimidation, mépris, chantage affectif, bouc émissaire, simplification abusive)",
-      "explanation": "effet probable sur le lecteur en langage simple (1–3 phrases)"
+
+      "tag": "étiquette courte (ex: intimidation, mépris, chantage affectif, bouc émissaire, appel à la peur)",
+
+      "technique_name": "nom de la technique de rhétorique ou de manipulation, en français simple (ex : appel à la peur, homme de paille, culpabilisation, inversion de culpabilité, généralisation abusive)",
+
+      "simple_definition": "définition ULTRA simple de cette technique (2–3 phrases max), comme si tu l'expliquais à quelqu'un qui découvre le sujet.",
+
+      "everyday_example": "exemple très concret dans la vie quotidienne (travail, famille, réseaux sociaux) qui utilise la même technique, pour que la personne puisse la reconnaître ailleurs.",
+
+      "explanation": "UN PARAGRAPHE PÉDAGOGIQUE (4–7 phrases) qui combine : 1) ce que la phrase fait psychologiquement, 2) pourquoi c'est efficace comme stratégie de pouvoir ou de manipulation, 3) comment on pourrait reformuler ça de façon plus saine/équilibrée."
     }
   ],
 
@@ -375,10 +391,11 @@ TU DOIS RENVOYER STRICTEMENT UN OBJET json AVEC CE SCHÉMA :
     }
   ],
 
-  "plain_translation": "Traduction en langage courant : ce que la personne est en train de faire / dire au niveau relationnel, en 1–3 phrases simples.",
-  "reaction_validation": "1–3 phrases expliquant si la réaction de la personne qui reçoit le message est compréhensible, logique, ou si le texte est plutôt neutre.",
+  "plain_translation": "Traduction en langage courant : ce que la personne est en train de faire / dire au niveau relationnel, en 2–4 phrases simples. Tu peux utiliser des images très concrètes (ex : 'en gros, il/elle est en train de te dire que...').",
 
-  "viral_punchline": "Une phrase très courte (max 12 mots), ultra cash et moqueuse, manière khey qui démontre le message. Elle peut être humiliante pour le comportement décrit, mais sans propos haineux envers un groupe protégé et sans appel à la violence."
+  "reaction_validation": "2–5 phrases expliquant si la réaction de la personne qui reçoit le message est compréhensible, logique, ou si le texte est plutôt neutre. Tu normalises les émotions sans juger.",
+
+  "viral_punchline": "Une phrase très courte (max 12 mots), ultra cash et moqueuse, manière khey, qui illustre le message. Elle peut être humiliante pour le comportement décrit, mais sans propos haineux envers un groupe protégé et sans appel à la violence."
 }
 
 ──────────────── RÈGLES D'INTERPRÉTATION ────────────────
@@ -403,10 +420,17 @@ TU DOIS RENVOYER STRICTEMENT UN OBJET json AVEC CE SCHÉMA :
 - Tu ne remplis "fact_checks" que si tu as une base raisonnable.
 - Si tu n'es pas sûr : verdict = "incertain" et "sources": [].
 
-4) Systemic view :
+4) Systemic view (pédagogique) :
 - Tu expliques pour un public non spécialiste, avec un vocabulaire simple.
 - Tu relies le micro au macro : quels récits, quels rapports de force, quelle vision du monde ?
+- Tu ajoutes des exemples concrets (vie au travail, réseaux sociaux, débats publics).
+- Tu peux faire des analogies simples : « c’est comme si… ».
 - Tu restes sobre, analytique, pas militant.
+
+5) Highlights (pédagogiques) :
+- Tu choisis 2 à 6 extraits vraiment significatifs.
+- Pour chacun : tu NOMMES la technique, tu la DÉFINIS simplement, tu donnes un EXEMPLE de la vie courante.
+- Le but est que la personne se dise : « OK, maintenant je sais repérer ça ailleurs. »
 
 Format de sortie :
 - UNIQUEMENT un objet json valide conforme au schéma.
@@ -430,7 +454,7 @@ Format de sortie :
         st.error(f"Erreur lors de l'appel à l'IA (analyse) : {e}")
         return None
 
-# ───────────────── LLM : RÉPONSES (VERSION ANCIEN CODE) ─────────────────
+# ───────────────── LLM : RÉPONSES (MODE CALME vs ROAST) ─────────────────
 def generate_replies_with_llm(
     original_text: str,
     analysis: Dict[str, Any],
@@ -444,7 +468,7 @@ def generate_replies_with_llm(
     préférences de l'utilisateur et du mode sélectionné (Calme vs Roast).
 
     - En mode « Roast », la réponse utilise toujours un système prompt de type
-      "Khey" et force un style sarcastique / moqueur inspiré de JVC.
+      "Khey" et force un style sarcastique / moqueur inspiré de forums 18-25.
     - En mode « Calme », le comportement reste similaire à l'application
       originale : le système choisit entre un prompt empathique ou sarcastique
       selon le ton demandé par l'utilisateur.
@@ -456,8 +480,7 @@ def generate_replies_with_llm(
         return {"calm": "", "assertive": ""}
 
     use_sarcastic = False
-    # Ancienne logique : mode "trash" uniquement, mais on conserve tel quel
-    if persona_mode.lower() == "trash":
+    if persona_mode.lower() == "roast":
         use_sarcastic = True
     else:
         lower_tone = tone_pref.lower() if tone_pref else ""
@@ -466,19 +489,20 @@ def generate_replies_with_llm(
 
     if use_sarcastic:
         system_prompt = """
-Tu es un "Khey" légendaire du forum 18-25 de JeuxVideo.com.
+Tu es un "Khey" légendaire d'un forum 18-25 anonyme.
 Important (technique) : tu dois renvoyer un unique objet json valide. Le mot « json » est volontairement en minuscules.
 
 Rôle :
 - Tu écris AU NOM DE LA PERSONNE QUI REÇOIT le message.
 - Tu balances des réponses courtes, humiliantes, ironiques et très cash.
-- Objectif : ridiculiser l'auteur du message par le sarcasme, la honte sociale et le mépris, façon meme internet.
+- Objectif : ridiculiser le comportement ou le discours de l'auteur du message par le sarcasme, la honte sociale et le mépris, façon meme internet.
 
 Contraintes :
 - Pas de propos haineux visant un groupe protégé.
 - Pas d'appel à la violence ni de menaces explicites.
-- Vocabulaire : "malaise", "ratio", "cheh", "golem", "brisé", "pleure", "touriste", "NPC", etc.
-- Style : agressif, moqueur, khey JVC, mais légal.
+- Tu peux avoir de l'humour noir mais sans franchir les lignes rouges ci-dessus.
+- Vocabulaire possible : "malaise", "ratio", "cheh", "golem", "brisé", "touriste", "NPC", "clown", etc.
+- Style : agressif, moqueur, khey, mais légal.
 
 Format JSON STRICT :
 {
@@ -582,7 +606,6 @@ def get_score_color(score: int) -> str:
     return "#6ee7b7"
 
 def reset_app() -> None:
-    # Ancienne logique + nouveau scroll_to_results
     keys_to_clear = [
         "input_text",
         "analysis",
@@ -596,7 +619,7 @@ def reset_app() -> None:
             del st.session_state[k]
 
 def render_reply_block(title: str, text: str) -> None:
-    """Bloc de réponse + bouton copier (ancienne version)."""
+    """Bloc de réponse + bouton copier."""
     if not text:
         return
     escaped = html_lib.escape(text)
@@ -666,34 +689,53 @@ with st.container():
             "<h1 style='margin-bottom:0.1rem;'>👁️ SUBTEXT</h1>",
             unsafe_allow_html=True,
         )
-        st.markdown(
-            "<p style='color:#94a3b8;font-weight:500;font-size:0.95rem;line-height:1.3;'>"
-            "Analyse le sous-texte d’un message.<br>Comprends la pression et choisis ta réponse."
-            "</p>",
-            unsafe_allow_html=True,
-        )
-        st.caption("Sélectionne ton mode d’analyse en haut à gauche.")
-
-    if persona_mode == "Calme":
-        st.caption("Mode Calme : complet, sérieux et défensif. Toutes les analyses sont affichées.")
-    else:
-        st.caption("Mode Roast : léger et impertinent, quelques détails sont masqués pour plus de rapidité.")
+        if persona_mode == "Calme":
+            st.markdown(
+                "<p style='color:#94a3b8;font-weight:500;font-size:0.95rem;line-height:1.3;'>"
+                "Analyse le sous-texte d’un message.<br>Comprends la pression, la logique de pouvoir et les enjeux systémiques—puis choisis ta réponse."
+                "</p>",
+                unsafe_allow_html=True,
+            )
+            st.caption("Mode Calme : sérieux, pédago et défensif. Tu comprends ce qui se joue, du micro au macro.")
+        else:
+            st.markdown(
+                "<p style='color:#fca5a5;font-weight:600;font-size:0.95rem;line-height:1.3;'>"
+                "Scanner de malaise pour messages éclatés.<br>On mesure la toxicité, puis on t’aide à ratio proprement."
+                "</p>",
+                unsafe_allow_html=True,
+            )
+            st.caption("Mode Roast : offensif, trollesque et un peu humour noir (dans les limites légales).")
 
 # ───────────────── MICRO-ONBOARDING ─────────────────
 with st.container():
-    st.markdown(
-        """
-        <div class="sub-card" style="margin-top:0.6rem;margin-bottom:0.4rem;">
-          <div class="small-label">Comment ça marche</div>
-          <ul style="margin:0.4rem 0 0.2rem 0.1rem;padding-left:1rem;font-size:0.9rem;color:#cbd5e1;">
-            <li><b>1.</b> Colle un message, un post ou un mail tendu.</li>
-            <li><b>2.</b> Clique sur <b>Scanner le sous-texte</b> et laisse l’IA décortiquer.</li>
-            <li><b>3.</b> Lis le diagnostic, puis copie une réponse prête à envoyer.</li>
-          </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if persona_mode == "Calme":
+        st.markdown(
+            """
+            <div class="sub-card" style="margin-top:0.6rem;margin-bottom:0.4rem;">
+              <div class="small-label">Comment ça marche</div>
+              <ul style="margin:0.4rem 0 0.2rem 0.1rem;padding-left:1rem;font-size:0.9rem;color:#cbd5e1;">
+                <li><b>1.</b> Colle un message, un post ou un mail tendu.</li>
+                <li><b>2.</b> Clique sur <b>Scanner le sous-texte</b> pour voir l'effet psychologique et la dynamique de pouvoir.</li>
+                <li><b>3.</b> Lis le diagnostic, le décryptage systémique, puis copie une réponse prête à envoyer.</li>
+              </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="sub-card" style="margin-top:0.6rem;margin-bottom:0.4rem;">
+              <div class="small-label">Mode Roast – Règles du jeu</div>
+              <ul style="margin:0.4rem 0 0.2rem 0.1rem;padding-left:1rem;font-size:0.9rem;color:#fecaca;">
+                <li><b>1.</b> Colle le message claqué au sol.</li>
+                <li><b>2.</b> Clique sur <b>Scanner le malaise</b> pour voir à quel point ça pue.</li>
+                <li><b>3.</b> Choisis une réponse entre « propre » et « retour de flamme ».</li>
+              </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 st.markdown("---")
 
@@ -721,19 +763,30 @@ with st.container():
                 st.session_state["analysis"] = None
                 st.session_state["replies"] = {"calm": "", "assertive": ""}
 
-    st.markdown("**Ou colle ton texte ici :**")
+    if persona_mode == "Calme":
+        st.markdown("**Ou colle ton texte ici :**")
+    else:
+        st.markdown("**Balance le message à analyser :**")
     st.text_area(
         label="",
         key="input_text",
         height=220,
-        placeholder="Colle le message, l'article, le discours, le tweet ou le post ici…",
+        placeholder=(
+            "Colle le message, l'article, le discours, le tweet ou le post ici…"
+            if persona_mode == "Calme"
+            else "Colle le pavé toxique ou le message éclaté ici…"
+        ),
     )
-    st.caption("ℹ️ Vos messages ne sont ni stockés ni partagés. Ils servent uniquement le temps de l'analyse.")
+    if persona_mode == "Calme":
+        st.caption("ℹ️ Tes messages ne sont ni stockés ni partagés. Ils servent uniquement le temps de l'analyse.")
+    else:
+        st.caption("ℹ️ Scan local pour mesurer le malaise. Rien n’est gardé après la session.")
 
     col_scan, col_reset = st.columns([3, 1], gap="small")
     with col_scan:
+        scan_label = "🔍 Scanner le sous-texte" if persona_mode == "Calme" else "🔍 Scanner le malaise"
         scan_clicked = st.button(
-            "🔍 Scanner le sous-texte",
+            scan_label,
             use_container_width=True,
             disabled=st.session_state.get("is_scanning", False),
         )
@@ -743,7 +796,10 @@ with st.container():
     if scan_clicked:
         input_text = st.session_state.get("input_text", "")
         if not input_text.strip():
-            st.warning("Colle d'abord un texte à analyser.")
+            if persona_mode == "Calme":
+                st.warning("Colle d'abord un texte à analyser.")
+            else:
+                st.warning("Faut d’abord coller un message pour le défoncer (gentiment).")
         else:
             st.session_state["is_scanning"] = True
             with st.spinner(
@@ -756,14 +812,12 @@ with st.container():
             st.session_state["is_scanning"] = False
 
             if analysis:
-                # Ton par défaut selon le mode (comme ton ancien pattern)
                 default_tone = (
                     "sarcastique / moqueur (déconseillé)" if persona_mode == "Roast" else "calme"
                 )
                 st.session_state["tone_pref"] = default_tone
                 st.session_state["emoji_allowed"] = True
 
-                # Génération initiale des réponses via l'ANCIEN generate_replies_with_llm
                 try:
                     with st.spinner("🛡️ Préparation des suggestions de réponse…"):
                         default_replies = generate_replies_with_llm(
@@ -819,15 +873,18 @@ if analysis:
     fact_checks = analysis.get("fact_checks", []) or []
     recommended_actions = analysis.get("recommended_actions", []) or []
 
-    # Vue d'ensemble
-    st.markdown("<div class='hero-card'>", unsafe_allow_html=True)
-    st.markdown("<div class='small-label'>Vue d'ensemble</div>", unsafe_allow_html=True)
+    # ───────── Vue d'ensemble / Scan du malaise ─────────
+    overview_label = "Vue d'ensemble" if persona_mode_current == "Calme" else "Scan du malaise"
+    score_label_title = "Indice de pression" if persona_mode_current == "Calme" else "Indice de malaise"
     score_color = get_score_color(global_score)
+
+    st.markdown("<div class='hero-card'>", unsafe_allow_html=True)
+    st.markdown(f"<div class='small-label'>{overview_label}</div>", unsafe_allow_html=True)
     st.markdown(
         f"""
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.3rem;margin-bottom:0.6rem;gap:0.9rem;flex-wrap:wrap;">
             <div style="min-width:140px;flex:0 0 auto;">
-                <div style="font-size:0.9rem;color:#94a3b8;">Indice de pression</div>
+                <div style="font-size:0.9rem;color:#94a3b8;">{score_label_title}</div>
                 <div style="font-size:2.3rem;font-weight:800;color:{score_color};margin-top:0.05rem;">
                     {global_score}%
                 </div>
@@ -852,8 +909,13 @@ if analysis:
     )
 
     if secondary_effects:
+        sec_label = (
+            "Autres réactions possibles"
+            if persona_mode_current == "Calme"
+            else "Effets secondaires possibles (sur ton cerveau)"
+        )
         st.markdown(
-            "<div class='small-label' style='margin-top:0.6rem;'>Autres réactions possibles</div>",
+            f"<div class='small-label' style='margin-top:0.6rem;'>{sec_label}</div>",
             unsafe_allow_html=True,
         )
         effects_html = ""
@@ -862,8 +924,9 @@ if analysis:
         st.markdown(effects_html, unsafe_allow_html=True)
 
     if tags:
+        sig_label = "Signaux détectés" if persona_mode_current == "Calme" else "Signaux de toxicité"
         st.markdown(
-            "<div class='small-label' style='margin-top:0.6rem;'>Signaux détectés</div>",
+            f"<div class='small-label' style='margin-top:0.6rem;'>{sig_label}</div>",
             unsafe_allow_html=True,
         )
         tag_html = ""
@@ -883,30 +946,50 @@ if analysis:
     if plain_translation:
         st.markdown("")
         st.markdown("<div class='sub-card'>", unsafe_allow_html=True)
-        st.markdown("**🧠 En vrai, ce que la personne est en train de dire :**", unsafe_allow_html=True)
+        if persona_mode_current == "Calme":
+            st.markdown("**🧠 En vrai, ce que la personne est en train de dire :**", unsafe_allow_html=True)
+        else:
+            st.markdown("**🧠 Traduction en langage « clair » :**", unsafe_allow_html=True)
         st.markdown(plain_translation)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Tabs
+    # ───────── Tabs ─────────
     tab_labels: List[str] = []
     fact_available = content_type in ("article", "discours", "forum", "réseau_social") and bool(fact_checks)
     response_available = content_type not in ("article", "discours")
-    tab_labels.append("🧩 Diagnostic")
-    tab_labels.append("🎯 Actions")
+
+    # Noms d’onglets différents selon le mode
     if persona_mode_current == "Calme":
+        tab_labels.append("🧩 Diagnostic")
+        tab_labels.append("🎯 Actions")
         tab_labels.append("🔍 Décryptage")
-    tab_labels.append("🧪 Fact-check" if fact_available else "🧪 Fact-check (N/A)")
-    tab_labels.append("🛡️ Réponse" if response_available else "🛡️ Réponse (N/A)")
+        tab_labels.append("🧪 Fact-check" if fact_available else "🧪 Fact-check (N/A)")
+        tab_labels.append("🛡️ Réponse" if response_available else "🛡️ Réponse (N/A)")
+    else:
+        tab_labels.append("🧩 Scan rapide")
+        tab_labels.append("🎯 Que faire (vraiment)")
+        # pas de décryptage détaillé en mode Roast
+        tab_labels.append("🧪 Fact-check" if fact_available else "🧪 Fact-check (N/A)")
+        tab_labels.append("💬 Réponse / Ratio" if response_available else "💬 Réponse (N/A)")
+
     st.caption("↔️ Sur mobile, fais glisser vers la gauche/droite pour voir tous les onglets.")
     tabs = st.tabs(tab_labels)
 
     idx = 0
 
-    # Diagnostic
+    # ───────── Diagnostic (Calme) / Scan rapide (Roast) ─────────
     with tabs[idx]:
-        st.markdown("#### Diagnostic rapide")
+        if persona_mode_current == "Calme":
+            st.markdown("#### Diagnostic rapide")
+        else:
+            st.markdown("#### Scan rapide du drama")
+
         st.markdown("<div class='sub-card' style='margin-bottom:0.9rem;'>", unsafe_allow_html=True)
-        st.markdown("**👤 Qui parle à qui ?**", unsafe_allow_html=True)
+        if persona_mode_current == "Calme":
+            st.markdown("**👤 Qui parle à qui ?**", unsafe_allow_html=True)
+        else:
+            st.markdown("**👤 Qui balance quoi sur qui ?**", unsafe_allow_html=True)
+
         rel_type = profile.get("relation_type", "—")
         channel = profile.get("channel", "—")
         power_asym = profile.get("power_asymmetry", "—")
@@ -927,32 +1010,87 @@ if analysis:
         p_score = int(pressure.get("score", 0) or 0)
         p_label = pressure.get("label", "—")
 
-        st.markdown("<div class='small-label'>Niveau de tension du message</div>", unsafe_allow_html=True)
-        st.markdown("<div class='metric-grid'>", unsafe_allow_html=True)
-        st.markdown(render_metric_card("Hostilité", h_score, h_label), unsafe_allow_html=True)
-        st.markdown(render_metric_card("Manipulation / pression", m_score, m_label), unsafe_allow_html=True)
-        st.markdown(render_metric_card("Pression sociale", p_score, p_label), unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.caption("Plus le pourcentage est haut, plus le message est lourd/agressif sur cet axe.")
+        if persona_mode_current == "Calme":
+            st.markdown("<div class='small-label'>Niveau de tension du message</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='small-label'>Niveau de toxicité ressentie</div>", unsafe_allow_html=True)
 
-        if reaction_validation:
+        st.markdown("<div class='metric-grid'>", unsafe_allow_html=True)
+        st.markdown(
+            render_metric_card(
+                "Hostilité" if persona_mode_current == "Calme" else "Sel / Hostilité",
+                h_score,
+                h_label,
+            ),
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            render_metric_card(
+                "Manipulation / pression" if persona_mode_current == "Calme" else "Manip / pression",
+                m_score,
+                m_label,
+            ),
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            render_metric_card(
+                "Pression sociale",
+                p_score,
+                p_label,
+            ),
+            unsafe_allow_html=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        if persona_mode_current == "Calme":
+            st.caption("Plus le pourcentage est haut, plus le message est lourd/agressif sur cet axe.")
+        else:
+            st.caption("Plus c’est haut, plus le message est cringe / agressif sur cet axe.")
+
+        if reaction_validation and persona_mode_current == "Calme":
             st.markdown("<div class='sub-card' style='margin-top:0.9rem;'>", unsafe_allow_html=True)
             st.markdown("**🎭 Est-ce que ta réaction est normale ?**", unsafe_allow_html=True)
             st.markdown(reaction_validation)
             st.markdown("</div>", unsafe_allow_html=True)
 
+        # Passages précis repérés — Éducatif uniquement en mode Calme
         if highlights and persona_mode_current == "Calme":
-            with st.expander("🔎 Passages précis repérés dans le texte", expanded=False):
+            with st.expander("🔎 Passages précis repérés dans le texte (avec explications de rhétorique)", expanded=False):
+                st.caption("Chaque passage te montre la technique utilisée, une définition simple et un exemple de la vie courante.")
                 for h in highlights:
                     quote = (h.get("quote") or "").strip()
                     tag = (h.get("tag") or "").strip()
+                    technique_name = (h.get("technique_name") or "").strip()
+                    simple_definition = (h.get("simple_definition") or "").strip()
+                    everyday_example = (h.get("everyday_example") or "").strip()
                     explanation = (h.get("explanation") or "").strip()
+
                     st.markdown("<div class='sub-card' style='margin-bottom:0.6rem;'>", unsafe_allow_html=True)
+
                     if tag:
                         st.markdown(render_tag(tag, "info"), unsafe_allow_html=True)
+
+                    if technique_name:
+                        st.markdown(f"**🧩 Technique utilisée :** {technique_name}")
+
                     if quote:
+                        st.markdown("")
+                        st.markdown("**📌 Passage du texte :**")
                         st.markdown(f"> {quote}")
+
+                    if simple_definition:
+                        st.markdown("")
+                        st.markdown("**📚 En clair, cette technique c’est quoi ?**")
+                        st.markdown(f"{simple_definition}")
+
+                    if everyday_example:
+                        st.markdown("")
+                        st.markdown("**🧪 Exemple dans la vie de tous les jours :**")
+                        st.markdown(f"> {everyday_example}")
+
                     if explanation:
+                        st.markdown("")
+                        st.markdown("**🔍 Pourquoi ce passage est puissant / problématique :**")
                         st.markdown(
                             f"<p style='font-size:0.9rem;color:#e2e8f0;margin-top:0.3rem;'>{explanation}</p>",
                             unsafe_allow_html=True,
@@ -960,14 +1098,25 @@ if analysis:
                     st.markdown("</div>", unsafe_allow_html=True)
     idx += 1
 
-    # Actions
+    # ───────── Actions ─────────
     with tabs[idx]:
-        st.markdown("#### Que faire concrètement ?")
+        if persona_mode_current == "Calme":
+            st.markdown("#### Que faire concrètement ?")
+        else:
+            st.markdown("#### Que faire : répondre, ignorer, ratio ?")
+
         if not recommended_actions:
-            st.caption("Aucune action recommandée par l'analyse.")
+            if persona_mode_current == "Calme":
+                st.caption("Aucune action recommandée par l'analyse.")
+            else:
+                st.caption("Pas de plan d’action spécifique. Fais comme tu le sens, mais proprement.")
         else:
             actions_sorted = sorted(recommended_actions, key=lambda a: a.get("priority", 3))
-            st.caption("🔴 Priorité 1 : immédiat · 🟠 2 : important · 🟡 3 : optionnel")
+            if persona_mode_current == "Calme":
+                st.caption("🔴 Priorité 1 : immédiat · 🟠 2 : important · 🟡 3 : optionnel")
+            else:
+                st.caption("🔴 Urgent · 🟠 Important · 🟡 Optionnel / lore")
+
             for act in actions_sorted:
                 label = (act.get("label") or "").strip()
                 detail = (act.get("detail") or "").strip()
@@ -978,8 +1127,12 @@ if analysis:
                     prio_icon = "🟠"
                 else:
                     prio_icon = "🟡"
+
                 if persona_mode_current == "Roast":
+                    # Version compacte, plus khey
                     st.markdown(f"{prio_icon} **{label}**")
+                    if detail:
+                        st.markdown(f"- {detail}")
                 else:
                     st.markdown("<div class='sub-card' style='margin-bottom:0.6rem;'>", unsafe_allow_html=True)
                     st.markdown(f"{prio_icon} **{label}**")
@@ -988,72 +1141,131 @@ if analysis:
                     st.markdown("</div>", unsafe_allow_html=True)
     idx += 1
 
-    # Décryptage
+    # ───────── Décryptage (Calme uniquement) OU Fact-check (Roast) ─────────
     if persona_mode_current == "Calme":
         with tabs[idx]:
-            st.markdown("#### Décryptage de fond")
-            with st.expander("Voir l'analyse détaillée du contexte et des rapports de force", expanded=False):
+            st.markdown("#### Décryptage de fond — Vision systémique")
+            with st.expander("Voir l'analyse détaillée du contexte, de la chaîne de valeur et des rapports de force", expanded=False):
                 st.markdown("<div class='sub-card' style='margin-bottom:0.8rem;'>", unsafe_allow_html=True)
                 scale = systemic.get("scale", "—")
                 power_dyn = systemic.get("power_dynamics", "—")
                 narrative_frame = systemic.get("narrative_frame", "—")
                 macro_implications = systemic.get("macro_implications", []) or []
-                st.markdown("**📏 Échelle analysée**")
+
+                st.markdown("**📏 1. À quelle échelle ça joue ? (micro → macro)**")
                 st.markdown(f"- {scale}")
                 st.markdown("")
-                st.markdown("**🧠 1. Qui tient la position de force ici ?**")
+
+                st.markdown("**⚖️ 2. Dynamique de pouvoir et chaîne de valeur**")
+                st.markdown(
+                    "Imagine une petite chaîne de valeur simplifiée : émetteur → message → destinataire → conséquences "
+                    "(et parfois d'autres acteurs en coulisse : managers, institutions, algorithmes, opinion publique…)."
+                )
                 st.markdown(f"➡️ {power_dyn}")
                 st.markdown("")
-                st.markdown("**🧱 2. Quelle histoire le message raconte sur le monde ?**")
+
+                st.markdown("**🧱 3. Le récit global que le message raconte sur le monde**")
+                st.markdown(
+                    "Ici, l’idée est de comprendre « l’histoire » dans laquelle on te fait entrer : "
+                    "mérite individuel, peur de la crise, culpabilité, compétition permanente, etc."
+                )
                 st.markdown(f"➡️ {narrative_frame}")
                 st.markdown("")
+
                 if macro_implications:
-                    st.markdown("**🌍 3. Si ce type de message se répète partout…**")
+                    st.markdown("**🌍 4. Si ce type de message se répète partout…**")
+                    st.markdown(
+                        "On passe du cas particulier (toi et ce message) à des conséquences plus larges : "
+                        "climat social, confiance, coopération, polarisation, burn-out, etc."
+                    )
                     for mi in macro_implications:
                         st.markdown(f"- {mi}")
+
                 st.markdown("</div>", unsafe_allow_html=True)
         idx += 1
 
-    # Fact-check
-    with tabs[idx]:
-        st.markdown("#### Analyse factuelle (si applicable)")
-        if fact_available:
-            for fc in fact_checks:
-                claim = (fc.get("claim") or "").strip()
-                verdict = (fc.get("verdict") or "").strip()
-                explanation = (fc.get("explanation") or "").strip()
-                sources = fc.get("sources", []) or []
-                st.markdown("<div class='sub-card' style='margin-bottom:0.6rem;'>", unsafe_allow_html=True)
-                if claim:
-                    st.markdown(f"**Affirmation :** {claim}")
-                if verdict:
-                    v_low = verdict.lower()
-                    level = "info"
-                    if "faux" in v_low:
-                        level = "danger"
-                    elif "partiellement" in v_low:
-                        level = "warn"
-                    elif "vrai" in v_low:
-                        level = "safe"
-                    verdict_badge = f"<span class='tag-pill {level}'>{verdict}</span>"
-                    st.markdown(f"**Verdict :** {verdict_badge}", unsafe_allow_html=True)
-                if explanation:
-                    st.markdown(f"**Pourquoi :** {explanation}")
-                if sources:
-                    st.markdown("**Sources possibles :**")
-                    for src in sources:
-                        st.markdown(f"- {src}")
-                st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.caption("Cette section n'est pas disponible pour ce type de contenu.")
-    idx += 1
+        # Onglet suivant = Fact-check
+        with tabs[idx]:
+            st.markdown("#### Analyse factuelle (si applicable)")
+            if fact_available:
+                for fc in fact_checks:
+                    claim = (fc.get("claim") or "").strip()
+                    verdict = (fc.get("verdict") or "").strip()
+                    explanation = (fc.get("explanation") or "").strip()
+                    sources = fc.get("sources", []) or []
+                    st.markdown("<div class='sub-card' style='margin-bottom:0.6rem;'>", unsafe_allow_html=True)
+                    if claim:
+                        st.markdown(f"**Affirmation :** {claim}")
+                    if verdict:
+                        v_low = verdict.lower()
+                        level = "info"
+                        if "faux" in v_low:
+                            level = "danger"
+                        elif "partiellement" in v_low:
+                            level = "warn"
+                        elif "vrai" in v_low:
+                            level = "safe"
+                        verdict_badge = f"<span class='tag-pill {level}'>{verdict}</span>"
+                        st.markdown(f"**Verdict :** {verdict_badge}", unsafe_allow_html=True)
+                    if explanation:
+                        st.markdown(f"**Pourquoi :** {explanation}")
+                    if sources:
+                        st.markdown("**Sources possibles :**")
+                        for src in sources:
+                            st.markdown(f"- {src}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.caption("Cette section n'est pas disponible pour ce type de contenu.")
+        idx += 1
 
-    # Réponse — 100% ancienne logique
+    else:
+        # En mode Roast, l'onglet suivant après Actions est déjà le Fact-check
+        with tabs[idx]:
+            st.markdown("#### Fact-check (si tu veux aller plus loin que le meme)")
+            if fact_available:
+                for fc in fact_checks:
+                    claim = (fc.get("claim") or "").strip()
+                    verdict = (fc.get("verdict") or "").strip()
+                    explanation = (fc.get("explanation") or "").strip()
+                    sources = fc.get("sources", []) or []
+                    st.markdown("<div class='sub-card' style='margin-bottom:0.6rem;'>", unsafe_allow_html=True)
+                    if claim:
+                        st.markdown(f"**Affirmation :** {claim}")
+                    if verdict:
+                        v_low = verdict.lower()
+                        level = "info"
+                        if "faux" in v_low:
+                            level = "danger"
+                        elif "partiellement" in v_low:
+                            level = "warn"
+                        elif "vrai" in v_low:
+                            level = "safe"
+                        verdict_badge = f"<span class='tag-pill {level}'>{verdict}</span>"
+                        st.markdown(f"**Verdict :** {verdict_badge}", unsafe_allow_html=True)
+                    if explanation:
+                        st.markdown(f"**Pourquoi :** {explanation}")
+                    if sources:
+                        st.markdown("**Sources possibles :**")
+                        for src in sources:
+                            st.markdown(f"- {src}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.caption("Rien à fact-check ici ou info trop vague. Contente-toi du malaise ressenti.")
+        idx += 1
+
+    # ───────── Réponse ─────────
     with tabs[idx]:
         if not response_available:
-            st.caption("SUBTEXT ne propose pas de réponse rédigée pour ce type de contenu (informel).")
+            if persona_mode_current == "Calme":
+                st.caption("SUBTEXT ne propose pas de réponse rédigée pour ce type de contenu (informel).")
+            else:
+                st.caption("Pas de réponse auto pour ce type de contenu. À garder comme lecture systémique.")
         else:
-            st.markdown("#### Construire ta réponse")
+            if persona_mode_current == "Calme":
+                st.markdown("#### Construire ta réponse")
+            else:
+                st.markdown("#### Préparer ton retour de flamme (propre)")
+
             col_tone, col_emoji = st.columns(2, gap="small")
             with col_tone:
                 tone_options = [
@@ -1084,8 +1296,17 @@ if analysis:
             emoji_allowed = st.session_state["emoji_allowed"]
             original_for_reply = st.session_state.get("input_text", "")
 
-            st.caption("SUBTEXT te suggère 2 versions : une calme et une plus ferme.")
-            if st.button("🛡️ Générer / mettre à jour la réponse suggérée", use_container_width=True):
+            if persona_mode_current == "Calme":
+                st.caption("SUBTEXT te suggère 2 versions : une calme et une plus ferme.")
+            else:
+                st.caption("Tu obtiens 2 versions : une pique « soft » et une plus brutale.")
+
+            button_label = (
+                "🛡️ Générer / mettre à jour la réponse suggérée"
+                if persona_mode_current == "Calme"
+                else "💬 Générer / mettre à jour ton punchline pack"
+            )
+            if st.button(button_label, use_container_width=True):
                 with st.spinner("Génération de la réponse…"):
                     replies = generate_replies_with_llm(
                         original_text=original_for_reply,
@@ -1099,23 +1320,43 @@ if analysis:
 
             replies = st.session_state["replies"]
             if replies.get("calm") or replies.get("assertive"):
-                tabs_reply = st.tabs(["😌 Version calme", "💬 Version assertive"])
-                with tabs_reply[0]:
-                    if replies.get("calm"):
-                        render_reply_block("Réponse calme (posée)", replies["calm"])
-                    else:
-                        st.caption("Pas de réponse calme dispo.")
-                with tabs_reply[1]:
-                    if replies.get("assertive"):
-                        render_reply_block("Réponse assertive (ferme mais propre)", replies["assertive"])
-                    else:
-                        st.caption("Pas de réponse assertive dispo.")
+                if persona_mode_current == "Calme":
+                    tabs_reply = st.tabs(["😌 Version calme", "💬 Version assertive"])
+                    with tabs_reply[0]:
+                        if replies.get("calm"):
+                            render_reply_block("Réponse calme (posée)", replies["calm"])
+                        else:
+                            st.caption("Pas de réponse calme dispo.")
+                    with tabs_reply[1]:
+                        if replies.get("assertive"):
+                            render_reply_block("Réponse assertive (ferme mais propre)", replies["assertive"])
+                        else:
+                            st.caption("Pas de réponse assertive dispo.")
+                else:
+                    tabs_reply = st.tabs(["🙂 Pique légère", "🔥 Retour de flamme"])
+                    with tabs_reply[0]:
+                        if replies.get("calm"):
+                            render_reply_block("Réponse khey soft", replies["calm"])
+                        else:
+                            st.caption("Pas de version soft dispo.")
+                    with tabs_reply[1]:
+                        if replies.get("assertive"):
+                            render_reply_block("Réponse khey cash", replies["assertive"])
+                        else:
+                            st.caption("Pas de version cash dispo.")
             else:
-                st.caption("Aucune réponse générée pour l'instant.")
+                if persona_mode_current == "Calme":
+                    st.caption("Aucune réponse générée pour l'instant.")
+                else:
+                    st.caption("Aucune punchline générée pour l'instant.")
 
     # ───────────────── RÉSUMÉ PARTAGEABLE ─────────────────
     st.markdown("---")
-    st.subheader("📸 Résumé partageable")
+    if persona_mode_current == "Calme":
+        st.subheader("📸 Résumé partageable")
+    else:
+        st.subheader("📸 Carte à screen pour le thread")
+
     score = global_score
     clean_score_color = get_score_color(score)
     clean_context = (
@@ -1194,14 +1435,23 @@ Généré par SUBTEXT — Détecteur de bullshit (MVP)."""
 </div>
 """
     st.markdown(html_code, unsafe_allow_html=True)
-    st.caption("Prends une capture de cet encadré pour partager le scan.")
+
+    if persona_mode_current == "Calme":
+        st.caption("Prends une capture de cet encadré pour partager le scan.")
+    else:
+        st.caption("Screen cette carte et balance-la sur ton thread préféré.")
 
     if st.button("📋 Copier en version forum (BBCode)"):
         st.code(bbcode_summary, language="text")
         st.success("Sélectionne ce bloc et copie-le (Ctrl+C / Cmd+C) pour le coller sur un forum.")
 
+    footer_text = (
+        "Made by Thomas — MVP SUBTEXT"
+        if persona_mode_current == "Calme"
+        else "Made by Thomas — SUBTEXT en mode khey"
+    )
     st.markdown(
-        "<p style='text-align:center;color:#475569;font-size:0.8rem;margin-top:0.3rem;'>Made by Thomas — MVP SUBTEXT</p>",
+        f"<p style='text-align:center;color:#475569;font-size:0.8rem;margin-top:0.3rem;'>{footer_text}</p>",
         unsafe_allow_html=True,
     )
 
