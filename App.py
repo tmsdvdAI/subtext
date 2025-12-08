@@ -1336,12 +1336,12 @@ if analysis:
                     tabs_reply = st.tabs(["🙂 Pique légère", "🔥 Retour de flamme"])
                     with tabs_reply[0]:
                         if replies.get("calm"):
-                            render_reply_block("Réponse khey soft", replies["calm"])
+                            render_reply_block("Réponse soft", replies["calm"])
                         else:
                             st.caption("Pas de version soft dispo.")
                     with tabs_reply[1]:
                         if replies.get("assertive"):
-                            render_reply_block("Réponse khey cash", replies["assertive"])
+                            render_reply_block("Réponse cash", replies["assertive"])
                         else:
                             st.caption("Pas de version cash dispo.")
             else:
@@ -1448,7 +1448,7 @@ Généré par SUBTEXT — Détecteur de bullshit (MVP)."""
     footer_text = (
         "Made by Thomas — MVP SUBTEXT"
         if persona_mode_current == "Calme"
-        else "Made by Thomas — SUBTEXT en mode khey"
+        else "Made by Thomas — SUBTEXT"
     )
     st.markdown(
         f"<p style='text-align:center;color:#475569;font-size:0.8rem;margin-top:0.3rem;'>{footer_text}</p>",
